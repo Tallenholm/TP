@@ -9,6 +9,7 @@ mod lower_hir;
 mod lower_mir;
 mod mir;
 mod module_loader;
+#[allow(clippy::while_let_loop)]
 mod parser;
 mod pipeline;
 mod source;
