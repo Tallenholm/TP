@@ -1,13 +1,9 @@
 //! TP compiler library.
 
+mod diagnostic;
 mod pipeline;
 mod source;
 
+pub use diagnostic::{render_diagnostic, Diagnostic, Label, Severity};
 pub use pipeline::{CompileReport, Compiler};
 pub use source::{LineCol, SourceFile, SourceId, Span};
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Diagnostic {
-    pub code: &'static str,
-    pub message: String,
-}
