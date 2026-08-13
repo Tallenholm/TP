@@ -8,6 +8,7 @@ mod lexer;
 mod lower_hir;
 mod lower_mir;
 mod mir;
+mod module_loader;
 mod parser;
 mod pipeline;
 mod source;
@@ -34,6 +35,7 @@ pub use mir::{
     BasicBlock, BlockId, Constant, LocalId, MirFunction, MirLocal, MirModule, MirPattern,
     MirStatement, Operand, Rvalue, Terminator,
 };
+pub use module_loader::ModuleLoader;
 pub use parser::{ParseResult, Parser};
 pub use pipeline::{CompileReport, Compiler, RunFailure, RunReport};
 pub use source::{LineCol, SourceFile, SourceId, Span};
