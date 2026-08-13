@@ -5,6 +5,8 @@ mod diagnostic;
 mod hir;
 mod lexer;
 mod lower_hir;
+mod lower_mir;
+mod mir;
 mod parser;
 mod pipeline;
 mod source;
@@ -24,6 +26,11 @@ pub use hir::{
 };
 pub use lexer::{LexResult, Lexer};
 pub use lower_hir::HirLowerer;
+pub use lower_mir::MirLowerer;
+pub use mir::{
+    BasicBlock, BlockId, Constant, LocalId, MirFunction, MirLocal, MirModule, MirPattern,
+    MirStatement, Operand, Rvalue, Terminator,
+};
 pub use parser::{ParseResult, Parser};
 pub use pipeline::{CompileReport, Compiler};
 pub use source::{LineCol, SourceFile, SourceId, Span};
