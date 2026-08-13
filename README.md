@@ -11,6 +11,8 @@ TP is a proprietary experimental general-purpose programming language and toolch
 
 Only work authorized by [`docs/gates/STATUS.md`](docs/gates/STATUS.md) may proceed. Locked-gate work must not begin until the controlling plan/status is explicitly changed and prerequisite gates have passed.
 
+The active M1 implementation is being reviewed under **Gate 1 — M1 Adversarial Stabilization**. Its live gate report is maintained on the active milestone branch and must be PASS before M1 can merge.
+
 ## Project controls
 
 - [`AGENTS.md`](AGENTS.md) — mandatory instructions for agents and contributors.
