@@ -9,7 +9,8 @@ mod source;
 mod token;
 
 pub use ast::{
-    BinaryOp, Block, Expr, ExprKind, FnDecl, Item, Module, Param, Stmt, TypeRef, UnaryOp,
+    BinaryOp, Block, EnumDecl, Expr, ExprKind, FieldDecl, FnDecl, ImportDecl, Item, MatchArm,
+    Module, Param, Pattern, PatternKind, Stmt, StructDecl, TypeRef, UnaryOp, VariantDecl,
 };
 pub use diagnostic::{render_diagnostic, Diagnostic, Label, Severity};
 pub use lexer::{LexResult, Lexer};
