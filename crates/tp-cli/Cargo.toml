@@ -1,0 +1,13 @@
+[package]
+name = "tp-cli"
+version = "0.0.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "tp"
+path = "src/main.rs"
+
+[dependencies]
+tp-compiler = { path = "../tp-compiler" }
