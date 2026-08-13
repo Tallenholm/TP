@@ -32,6 +32,12 @@ impl<'a> Lexer<'a> {
                     self.advance();
                 }
                 TokenKind::from_identifier(&self.source.text()[start..self.offset])
+            } else if ch.is_ascii_digit() {
+                self.advance();
+                while self.current().is_some_and(|next| next.is_ascii_digit()) {
+                    self.advance();
+                }
+                TokenKind::Integer
             } else {
                 match ch {
                     '(' => self.single(TokenKind::LParen),
@@ -41,14 +47,22 @@ impl<'a> Lexer<'a> {
                     ',' => self.single(TokenKind::Comma),
                     ':' => self.single(TokenKind::Colon),
                     '+' => self.single(TokenKind::Plus),
+                    '=' => self.single(TokenKind::Equal),
                     '-' if self.peek() == Some('>') => {
                         self.advance();
                         self.advance();
                         TokenKind::Arrow
                     }
                     _ => {
-                        // Recovery diagnostics are introduced in the next TDD slice.
                         self.advance();
+                        let span = Span::new(self.source.id(), start, self.offset);
+                        result.diagnostics.push(
+                            Diagnostic::error(
+                                "TP-E0001",
+                                format!("invalid character `{ch}`"),
+                            )
+                            .with_primary(span),
+                        );
                         continue;
                     }
                 }
