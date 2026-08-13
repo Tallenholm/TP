@@ -1,12 +1,15 @@
 # TP
 
+> [!CAUTION]
+> **Gate 1 is ACTIVE and M2+ work is LOCKED.** Before making any change, read [`AGENTS.md`](AGENTS.md), [`docs/MASTER_GATED_DEVELOPMENT_PLAN.md`](docs/MASTER_GATED_DEVELOPMENT_PLAN.md), and [`docs/gates/STATUS.md`](docs/gates/STATUS.md). Passing CI does **not** authorize merge or advancement.
+
 TP is an experimental general-purpose programming language and toolchain designed for software built jointly by humans and AI agents.
 
 > **Proprietary software.** Copyright (c) 2026 Timothy Holm. All Rights Reserved. TP is **not** open source. The root [`LICENSE`](LICENSE) grants no general right to copy, modify, redistribute, deploy, commercialize, or reuse this project.
 
 ## M1 status
 
-The current **M1 Executable Core** implements a complete interpreter-backed path from TP source code to execution:
+The current **M1 Executable Core** implements an interpreter-backed path from TP source code to execution, but it is **not yet a passed milestone**. Gate 1 adversarial stabilization must close all Critical/Major correctness and architecture findings before M1 can be approved for merge.
 
 ```text
 source
@@ -18,7 +21,7 @@ source
   -> MIR interpreter
 ```
 
-M1 is deliberately interpreter-backed. Native/LLVM code generation is not implemented yet; stabilizing language semantics comes first.
+M1 is deliberately interpreter-backed. Native/LLVM code generation is not implemented yet and is prohibited while its later gate remains locked.
 
 ## Build the bootstrap toolchain
 
@@ -67,7 +70,7 @@ Program output is written to stdout. Compiler and runtime diagnostics are writte
 cargo run -p tp-cli -- check --diagnostic-format json path/to/main.tp
 ```
 
-M1 emits one JSON object per diagnostic with a versioned schema, stable diagnostic code, severity, and message.
+M1 emits one JSON object per diagnostic with a versioned schema, stable diagnostic code, severity, and message. Gate 1 includes hardening diagnostics so source-aware spans and multi-file context become part of the verified contract.
 
 ## Language examples
 
@@ -148,11 +151,11 @@ fn main() -> i64 {
 }
 ```
 
-M1 resolves imports relative to the importing file and rejects import cycles.
+M1 resolves imports relative to the importing file and rejects import cycles. Gate 1 includes broader adversarial module-graph validation before this behavior is considered frozen.
 
 ## M1 language surface
 
-Implemented and tested:
+Currently implemented and tested, but still subject to Gate 1 correctness repair and Gate 2 semantic freeze:
 
 - functions, parameters, calls, recursion, and return types;
 - `let` immutable bindings and `var` mutable bindings;
@@ -186,11 +189,11 @@ Current diagnostic families include:
 - `TP-E0300` — type/semantic error
 - `TP-E0500` — runtime trap
 
-The diagnostic model is intentionally structured so editors and AI agents can consume the same compiler facts shown to humans.
+The diagnostic model is intended to become a stable shared interface for editors, humans, and AI agents after the appropriate gates pass.
 
-## Not implemented yet
+## Not authorized yet
 
-These are intentionally outside M1 rather than silently implied to work:
+These are intentionally outside the currently active gates and must not be implemented until `docs/gates/STATUS.md` unlocks them:
 
 - ownership and borrow checking;
 - deterministic destruction rules for heap-backed user values;
@@ -202,26 +205,25 @@ These are intentionally outside M1 rather than silently implied to work:
 - JavaScript/TypeScript or Python interoperability;
 - LLVM/native machine-code output;
 - browser, Android, or iOS packaging;
-- language server;
-- formatter and linter commands;
-- generated API documentation;
-- macros/metaprogramming;
 - self-hosting compiler.
 
-Those belong to later milestones after the M1 semantics are proven.
+Some tooling may be modified earlier only when directly required to close an active gate.
 
-## Design documents
-
-The foundational language design and executable-core implementation plan live under:
+## Controlling documents
 
 ```text
+AGENTS.md
+docs/MASTER_GATED_DEVELOPMENT_PLAN.md
+docs/gates/STATUS.md
+docs/gates/GATE_REPORT_TEMPLATE.md
+CONTRIBUTING.md
 docs/superpowers/specs/2026-08-12-universal-language-design.md
 docs/superpowers/plans/2026-08-12-m1-executable-core.md
 ```
 
 ## Development verification
 
-The final M1 gate is intended to pass all of:
+The M1 gate requires more than these commands, but all of them must pass:
 
 ```bash
 cargo fmt --all -- --check
@@ -229,4 +231,4 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
-Compiler features are expected to have both successful-program tests and failure/recovery tests.
+Compiler changes are expected to demonstrate RED -> GREEN behavior and include successful-program, failure, recovery, boundary, and regression coverage as required by the active gate.
