@@ -113,7 +113,8 @@ impl TypeChecker {
                                 .collect(),
                             span: variant.span,
                         };
-                        if let Some(previous) = variants.insert(variant.name.clone(), info.clone()) {
+                        if let Some(previous) = variants.insert(variant.name.clone(), info.clone())
+                        {
                             self.diagnostics.push(
                                 Diagnostic::error(
                                     "TP-E0200",
@@ -210,11 +211,8 @@ impl TypeChecker {
                 .is_err()
             {
                 self.diagnostics.push(
-                    Diagnostic::error(
-                        "TP-E0200",
-                        format!("duplicate parameter `{}`", param.name),
-                    )
-                    .with_primary(param.span),
+                    Diagnostic::error("TP-E0200", format!("duplicate parameter `{}`", param.name))
+                        .with_primary(param.span),
                 );
             }
         }
@@ -302,11 +300,7 @@ impl TypeChecker {
             }
             Stmt::Expr { expr, terminated } => {
                 let ty = self.check_expr(expr);
-                if *terminated {
-                    Type::Unit
-                } else {
-                    ty
-                }
+                if *terminated { Type::Unit } else { ty }
             }
         }
     }
@@ -349,7 +343,9 @@ impl TypeChecker {
                             self.diagnostics.push(
                                 Diagnostic::error(
                                     "TP-E0300",
-                                    format!("unary `-` requires a numeric value, found `{inner_ty}`"),
+                                    format!(
+                                        "unary `-` requires a numeric value, found `{inner_ty}`"
+                                    ),
                                 )
                                 .with_primary(expr.span),
                             );
@@ -495,11 +491,8 @@ impl TypeChecker {
         let Type::Named { name, args } = &base_ty else {
             if !base_ty.is_unknown() {
                 self.diagnostics.push(
-                    Diagnostic::error(
-                        "TP-E0300",
-                        format!("type `{base_ty}` does not have fields"),
-                    )
-                    .with_primary(span),
+                    Diagnostic::error("TP-E0300", format!("type `{base_ty}` does not have fields"))
+                        .with_primary(span),
                 );
             }
             return Type::Unknown;
@@ -554,12 +547,7 @@ impl TypeChecker {
             self.scopes.pop();
             result = Some(match result {
                 None => arm_ty,
-                Some(previous) => self.unify_branch_types(
-                    arm.span,
-                    previous,
-                    arm_ty,
-                    "match arms",
-                ),
+                Some(previous) => self.unify_branch_types(arm.span, previous, arm_ty, "match arms"),
             });
         }
 
@@ -598,7 +586,11 @@ impl TypeChecker {
         match &pattern.kind {
             PatternKind::Wildcard => PatternCoverage::Wildcard,
             PatternKind::Name(name) => {
-                if let Type::Named { name: enum_name, args } = target {
+                if let Type::Named {
+                    name: enum_name,
+                    args,
+                } = target
+                {
                     if let Some(enum_info) = self.enums.get(enum_name).cloned() {
                         if let Some(variant) = enum_info.variants.get(name).cloned() {
                             if variant.payload.is_empty() {
@@ -759,7 +751,11 @@ impl TypeChecker {
                     self.diagnostics.push(
                         Diagnostic::error(
                             "TP-E0300",
-                            format!("call expects {} arguments, found {}", params.len(), args.len()),
+                            format!(
+                                "call expects {} arguments, found {}",
+                                params.len(),
+                                args.len()
+                            ),
                         )
                         .with_primary(span),
                     );
@@ -790,8 +786,11 @@ impl TypeChecker {
                     self.check_expr(arg);
                 }
                 self.diagnostics.push(
-                    Diagnostic::error("TP-E0300", format!("value of type `{other}` is not callable"))
-                        .with_primary(callee.span),
+                    Diagnostic::error(
+                        "TP-E0300",
+                        format!("value of type `{other}` is not callable"),
+                    )
+                    .with_primary(callee.span),
                 );
                 Type::Unknown
             }
@@ -822,12 +821,7 @@ impl TypeChecker {
         for (index, arg) in args.iter().enumerate() {
             let actual = self.check_expr(arg);
             if let Some(template) = variant.payload.get(index) {
-                infer_type_params(
-                    template,
-                    &actual,
-                    &variant.type_params,
-                    &mut substitution,
-                );
+                infer_type_params(template, &actual, &variant.type_params, &mut substitution);
                 let expected = substitute_type(template, &substitution);
                 if !types_compatible(&expected, &actual) {
                     self.type_mismatch(
@@ -968,7 +962,10 @@ impl TypeChecker {
         self.diagnostics.push(
             Diagnostic::error(
                 "TP-E0300",
-                format!("{}: expected `{expected}`, found `{actual}`", context.into()),
+                format!(
+                    "{}: expected `{expected}`, found `{actual}`",
+                    context.into()
+                ),
             )
             .with_primary(span),
         );

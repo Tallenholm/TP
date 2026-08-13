@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     BinaryOp, Block, EnumDecl, Expr, ExprKind, FnDecl, HirBlock, HirExpr, HirExprKind, HirFunction,
     HirMatchArm, HirModule, HirParam, HirPattern, HirPatternKind, HirStmt, Item, Module, Pattern,
-    PatternKind, Scopes, Span, Stmt, StructDecl, SymbolId, Type, TypeRef, UnaryOp,
+    PatternKind, Scopes, Span, Stmt, SymbolId, Type, TypeRef, UnaryOp,
 };
 
 #[derive(Debug, Clone)]
@@ -245,7 +245,9 @@ impl HirLowerer {
 
     fn lower_expr(&mut self, expr: &Expr) -> HirExpr {
         match &expr.kind {
-            ExprKind::Integer(value) => self.hir(expr.span, Type::I64, HirExprKind::Integer(*value)),
+            ExprKind::Integer(value) => {
+                self.hir(expr.span, Type::I64, HirExprKind::Integer(*value))
+            }
             ExprKind::Float(value) => self.hir(expr.span, Type::F64, HirExprKind::Float(*value)),
             ExprKind::String(value) => {
                 self.hir(expr.span, Type::String, HirExprKind::String(value.clone()))
@@ -253,7 +255,11 @@ impl HirLowerer {
             ExprKind::Bool(value) => self.hir(expr.span, Type::Bool, HirExprKind::Bool(*value)),
             ExprKind::Name(name) => {
                 if let Some(binding) = self.scopes.get(name) {
-                    return self.hir(expr.span, binding.ty.clone(), HirExprKind::Local(binding.id));
+                    return self.hir(
+                        expr.span,
+                        binding.ty.clone(),
+                        HirExprKind::Local(binding.id),
+                    );
                 }
                 let ty = if let Some(function) = self.functions.get(name) {
                     Type::Function {
@@ -490,7 +496,10 @@ impl HirLowerer {
     }
 
     fn is_nullary_variant_for_target(&self, name: &str, target: &Type) -> bool {
-        let Type::Named { name: enum_name, .. } = target else {
+        let Type::Named {
+            name: enum_name, ..
+        } = target
+        else {
             return false;
         };
         self.enums
@@ -533,12 +542,7 @@ impl HirLowerer {
         let mut substitution = HashMap::new();
         for (field_name, value) in fields {
             if let Some(template) = info.fields.get(field_name) {
-                infer_type_params(
-                    template,
-                    &value.ty,
-                    &info.type_params,
-                    &mut substitution,
-                );
+                infer_type_params(template, &value.ty, &info.type_params, &mut substitution);
             }
         }
         Type::Named {
@@ -630,7 +634,9 @@ fn infer_type_params(
 ) {
     if let Type::Named { name, args } = template {
         if args.is_empty() && type_params.iter().any(|param| param == name) {
-            substitution.entry(name.clone()).or_insert_with(|| actual.clone());
+            substitution
+                .entry(name.clone())
+                .or_insert_with(|| actual.clone());
             return;
         }
     }

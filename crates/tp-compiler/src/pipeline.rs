@@ -41,11 +41,7 @@ impl Compiler {
         Ok(HirLowerer::lower(&module))
     }
 
-    pub fn lower_mir_source(
-        &self,
-        name: &str,
-        source: &str,
-    ) -> Result<MirModule, Vec<Diagnostic>> {
+    pub fn lower_mir_source(&self, name: &str, source: &str) -> Result<MirModule, Vec<Diagnostic>> {
         let hir = self.lower_source(name, source)?;
         Ok(MirLowerer::lower(&hir))
     }

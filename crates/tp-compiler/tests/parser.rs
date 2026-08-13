@@ -3,7 +3,11 @@ use tp_compiler::{BinaryOp, ExprKind, Item, Lexer, Parser, SourceFile, Stmt};
 fn parse(source_text: &str) -> tp_compiler::ParseResult {
     let source = SourceFile::new("main.tp", source_text);
     let lexed = Lexer::new(&source).lex();
-    assert!(lexed.diagnostics.is_empty(), "lexer diagnostics: {:#?}", lexed.diagnostics);
+    assert!(
+        lexed.diagnostics.is_empty(),
+        "lexer diagnostics: {:#?}",
+        lexed.diagnostics
+    );
     Parser::new(&source, lexed.tokens).parse_module()
 }
 
@@ -18,12 +22,20 @@ fn multiplication_binds_tighter_than_addition() {
     let Stmt::Let { value, .. } = &function.body.statements[0] else {
         panic!("expected let");
     };
-    let ExprKind::Binary { op: BinaryOp::Add, right, .. } = &value.kind else {
+    let ExprKind::Binary {
+        op: BinaryOp::Add,
+        right,
+        ..
+    } = &value.kind
+    else {
         panic!("expected addition at root: {:#?}", value.kind);
     };
     assert!(matches!(
         right.kind,
-        ExprKind::Binary { op: BinaryOp::Multiply, .. }
+        ExprKind::Binary {
+            op: BinaryOp::Multiply,
+            ..
+        }
     ));
 }
 
@@ -36,11 +48,13 @@ fn parser_recovers_at_statement_boundary() {
     let Item::Function(function) = &module.items[0] else {
         panic!("expected function");
     };
-    assert!(function
-        .body
-        .statements
-        .iter()
-        .any(|stmt| matches!(stmt, Stmt::Let { name, .. } if name == "y")));
+    assert!(
+        function
+            .body
+            .statements
+            .iter()
+            .any(|stmt| matches!(stmt, Stmt::Let { name, .. } if name == "y"))
+    );
 }
 
 #[test]
@@ -51,7 +65,9 @@ fn parses_generic_enum_and_match() {
     assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
     let module = result.module.expect("module");
     assert_eq!(module.items.len(), 2);
-    assert!(matches!(&module.items[0], Item::Enum(decl) if decl.name == "Option" && decl.type_params == vec!["T"]));
+    assert!(
+        matches!(&module.items[0], Item::Enum(decl) if decl.name == "Option" && decl.type_params == vec!["T"])
+    );
     let Item::Function(function) = &module.items[1] else {
         panic!("expected function");
     };
@@ -75,7 +91,9 @@ fn parses_struct_construction_and_field_access() {
     let Stmt::Let { value, .. } = &function.body.statements[0] else {
         panic!("expected let");
     };
-    assert!(matches!(&value.kind, ExprKind::StructLiteral { type_name, fields } if type_name == "User" && fields.len() == 2));
+    assert!(
+        matches!(&value.kind, ExprKind::StructLiteral { type_name, fields } if type_name == "User" && fields.len() == 2)
+    );
     let Stmt::Expr { expr, .. } = &function.body.statements[1] else {
         panic!("expected field expression");
     };

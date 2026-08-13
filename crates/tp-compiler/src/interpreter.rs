@@ -201,9 +201,7 @@ impl<'a> Interpreter<'a> {
             Rvalue::Struct { type_name, fields } => {
                 let fields = fields
                     .iter()
-                    .map(|(name, operand)| {
-                        Ok((name.clone(), self.eval_operand(operand, frame)?))
-                    })
+                    .map(|(name, operand)| Ok((name.clone(), self.eval_operand(operand, frame)?)))
                     .collect::<Result<Vec<_>, RuntimeError>>()?;
                 Ok(Value::Struct {
                     type_name: type_name.clone(),
@@ -340,7 +338,9 @@ fn eval_binary(op: BinaryOp, left: Value, right: Value) -> Result<Value, Runtime
         NotEqual => return Ok(Value::Bool(left != right)),
         And | Or => {
             let (Value::Bool(left), Value::Bool(right)) = (left, right) else {
-                return Err(RuntimeError::trap("logical operator requires Bool operands"));
+                return Err(RuntimeError::trap(
+                    "logical operator requires Bool operands",
+                ));
             };
             return Ok(Value::Bool(if op == And {
                 left && right

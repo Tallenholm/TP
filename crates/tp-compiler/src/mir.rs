@@ -41,10 +41,7 @@ pub struct BasicBlock {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum MirStatement {
-    Assign {
-        target: LocalId,
-        value: Rvalue,
-    },
+    Assign { target: LocalId, value: Rvalue },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -118,8 +115,5 @@ pub enum MirPattern {
     Integer(i64),
     Bool(bool),
     String(String),
-    Variant {
-        name: String,
-        args: Vec<MirPattern>,
-    },
+    Variant { name: String, args: Vec<MirPattern> },
 }

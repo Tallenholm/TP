@@ -22,7 +22,7 @@ pub use ast::{
     BinaryOp, Block, EnumDecl, Expr, ExprKind, FieldDecl, FnDecl, ImportDecl, Item, MatchArm,
     Module, Param, Pattern, PatternKind, Stmt, StructDecl, TypeRef, UnaryOp, VariantDecl,
 };
-pub use diagnostic::{render_diagnostic, Diagnostic, Label, Severity};
+pub use diagnostic::{Diagnostic, Label, Severity, render_diagnostic};
 pub use hir::{
     HirBlock, HirExpr, HirExprKind, HirFunction, HirMatchArm, HirModule, HirParam, HirPattern,
     HirPatternKind, HirStmt,

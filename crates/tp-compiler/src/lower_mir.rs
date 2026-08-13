@@ -36,11 +36,7 @@ impl MirLowerer {
 
         let mut params = Vec::with_capacity(function.params.len());
         for param in &function.params {
-            let local = builder.new_named_local(
-                Some(param.name.clone()),
-                param.ty.clone(),
-                false,
-            );
+            let local = builder.new_named_local(Some(param.name.clone()), param.ty.clone(), false);
             builder.symbol_locals.insert(param.symbol, local);
             params.push(local);
         }
@@ -116,12 +112,7 @@ impl<'a> FunctionBuilder<'a> {
             .push(statement);
     }
 
-    fn new_named_local(
-        &mut self,
-        name: Option<String>,
-        ty: Type,
-        mutable: bool,
-    ) -> LocalId {
+    fn new_named_local(&mut self, name: Option<String>, ty: Type, mutable: bool) -> LocalId {
         let id = LocalId(self.locals.len() as u32);
         self.locals.push(MirLocal {
             id,
@@ -154,9 +145,7 @@ impl<'a> FunctionBuilder<'a> {
                 break;
             }
             match statement {
-                HirStmt::Expr { expr, terminated }
-                    if Some(index) == last_index && !terminated =>
-                {
+                HirStmt::Expr { expr, terminated } if Some(index) == last_index && !terminated => {
                     tail = Some(self.lower_expr(expr));
                 }
                 _ => self.lower_statement(statement),
@@ -175,11 +164,7 @@ impl<'a> FunctionBuilder<'a> {
                 ..
             } => {
                 let value_operand = self.lower_expr(value);
-                let local = self.new_named_local(
-                    Some(name.clone()),
-                    value.ty.clone(),
-                    *mutable,
-                );
+                let local = self.new_named_local(Some(name.clone()), value.ty.clone(), *mutable);
                 self.symbol_locals.insert(*symbol, local);
                 self.assign_rvalue(local, Rvalue::Use(value_operand));
             }
@@ -238,19 +223,12 @@ impl<'a> FunctionBuilder<'a> {
                     args: Vec::new(),
                 },
             ),
-            HirExprKind::Global(name) => self.temp_rvalue(
-                expr.ty.clone(),
-                Rvalue::Function(name.clone()),
-            ),
+            HirExprKind::Global(name) => {
+                self.temp_rvalue(expr.ty.clone(), Rvalue::Function(name.clone()))
+            }
             HirExprKind::Unary { op, expr: inner } => {
                 let operand = self.lower_expr(inner);
-                self.temp_rvalue(
-                    expr.ty.clone(),
-                    Rvalue::Unary {
-                        op: *op,
-                        operand,
-                    },
-                )
+                self.temp_rvalue(expr.ty.clone(), Rvalue::Unary { op: *op, operand })
             }
             HirExprKind::Binary { op, left, right } => {
                 let left = self.lower_expr(left);
@@ -398,7 +376,9 @@ impl<'a> FunctionBuilder<'a> {
         }
 
         self.switch_to(otherwise);
-        self.set_terminator(Terminator::Trap("non-exhaustive match reached at runtime".into()));
+        self.set_terminator(Terminator::Trap(
+            "non-exhaustive match reached at runtime".into(),
+        ));
         self.switch_to(join);
         Operand::Local(result)
     }

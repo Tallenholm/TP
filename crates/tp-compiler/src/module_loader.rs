@@ -1,4 +1,8 @@
-use std::{collections::{HashMap, HashSet}, fs, path::{Path, PathBuf}};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+    path::{Path, PathBuf},
+};
 
 use crate::{
     Block, Diagnostic, Expr, ExprKind, FnDecl, ImportDecl, Item, Lexer, MatchArm, Module, Param,
@@ -184,10 +188,7 @@ impl NamespaceRewriter {
         for param in &mut function.params {
             param.ty = self.rewrite_type(param.ty.clone());
         }
-        function.return_type = function
-            .return_type
-            .take()
-            .map(|ty| self.rewrite_type(ty));
+        function.return_type = function.return_type.take().map(|ty| self.rewrite_type(ty));
 
         self.push_scope();
         for Param { name, .. } in &function.params {

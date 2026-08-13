@@ -106,11 +106,7 @@ impl<'a> Lexer<'a> {
             self.advance();
         }
 
-        if self.current() == Some('.')
-            && self
-                .peek()
-                .is_some_and(|next| next.is_ascii_digit())
-        {
+        if self.current() == Some('.') && self.peek().is_some_and(|next| next.is_ascii_digit()) {
             self.advance();
             while self.current().is_some_and(|next| next.is_ascii_digit()) {
                 self.advance();

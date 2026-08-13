@@ -182,10 +182,7 @@ pub enum PatternKind {
     Integer(i64),
     Bool(bool),
     String(String),
-    Variant {
-        name: String,
-        args: Vec<Pattern>,
-    },
+    Variant { name: String, args: Vec<Pattern> },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

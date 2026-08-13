@@ -49,11 +49,7 @@ impl Diagnostic {
         Self::new(Severity::Note, code, message)
     }
 
-    pub fn new(
-        severity: Severity,
-        code: &'static str,
-        message: impl Into<String>,
-    ) -> Self {
+    pub fn new(severity: Severity, code: &'static str, message: impl Into<String>) -> Self {
         Self {
             code,
             severity,
@@ -93,7 +89,9 @@ pub fn render_diagnostic(source: &SourceFile, diagnostic: &Diagnostic) -> String
         if let Some(location) = source.line_col(span.start) {
             out.push_str(&format!(
                 " --> {}:{}:{}\n",
-                source.name(), location.line, location.column
+                source.name(),
+                location.line,
+                location.column
             ));
             out.push_str("  |\n");
 

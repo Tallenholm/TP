@@ -5,7 +5,10 @@ fn check(source: &str) -> tp_compiler::CompileReport {
 }
 
 fn has_code(report: &tp_compiler::CompileReport, code: &str) -> bool {
-    report.diagnostics.iter().any(|diagnostic| diagnostic.code == code)
+    report
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.code == code)
 }
 
 #[test]

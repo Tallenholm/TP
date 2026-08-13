@@ -18,7 +18,11 @@ fn check_returns_zero_for_valid_program() {
         .arg(fixture("hello.tp"))
         .output()
         .expect("tp should launch");
-    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
 
 #[test]
@@ -41,7 +45,11 @@ fn run_executes_program_and_writes_program_output_to_stdout() {
         .arg(fixture("hello.tp"))
         .output()
         .expect("tp should launch");
-    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     assert_eq!(String::from_utf8_lossy(&output.stdout), "hello from TP\n");
 }
 
@@ -57,5 +65,8 @@ fn json_diagnostics_are_machine_readable_objects() {
     assert!(stderr.contains("\"schema\":1"), "{stderr}");
     assert!(stderr.contains("\"code\":\"TP-E0200\""), "{stderr}");
     assert!(stderr.contains("\"severity\":\"error\""), "{stderr}");
-    assert!(stderr.contains("\"message\":\"unknown name `missing`\""), "{stderr}");
+    assert!(
+        stderr.contains("\"message\":\"unknown name `missing`\""),
+        "{stderr}"
+    );
 }

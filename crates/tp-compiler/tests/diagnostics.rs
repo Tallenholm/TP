@@ -1,4 +1,4 @@
-use tp_compiler::{render_diagnostic, Diagnostic, SourceFile, Span};
+use tp_compiler::{Diagnostic, SourceFile, Span, render_diagnostic};
 
 #[test]
 fn byte_span_maps_to_line_and_column() {
