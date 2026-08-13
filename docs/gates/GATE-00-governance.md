@@ -6,7 +6,7 @@
 **Implementation PR:** governance changes applied directly to `main` by project owner instruction  
 **Report date:** 2026-08-12
 
-> Gate 0 is not yet PASSED. The repository visibility decision and any required GitHub ruleset/branch-protection configuration remain explicit blockers.
+> Gate 0 is not yet PASSED. Repository visibility, dependency-license reconciliation, and GitHub ruleset/branch-protection enforcement remain explicit blockers.
 
 ## 1. Requirements
 
@@ -22,10 +22,11 @@
 | G0-R08 | README makes gate policy visible | PASS | `README.md` |
 | G0-R09 | Proprietary root license exists | PASS | `LICENSE` |
 | G0-R10 | Repository visibility decision resolved | FAIL | Repository remains public at report creation; owner has not yet recorded final private/public decision in Gate 0. |
-| G0-R11 | Dependency-license inventory process/file established | FAIL | Required before Gate 0 closes. |
-| G0-R12 | ADR convention/template established | FAIL | Required before Gate 0 closes. |
+| G0-R11 | Dependency-license inventory process/file established | PASS | `THIRD_PARTY_LICENSES.md` establishes required ledger/process. |
+| G0-R12 | ADR convention/template established | PASS | `docs/decisions/README.md` and `docs/decisions/TEMPLATE.md`. |
 | G0-R13 | GitHub branch/ruleset enforcement reviewed/configured where available | FAIL | CODEOWNERS exists, but repository settings/ruleset enforcement still require review. |
-| G0-R14 | Governance copies on active M1 branch | PASS | Active branch contains `AGENTS.md`, master roadmap, gate status/report template, contribution policy, README gate warning, and Gate 1 report. |
+| G0-R14 | Governance copies on active M1 branch | PASS | Active branch contains `AGENTS.md`, master roadmap, gate status/report template, contribution policy, README gate warning, Gate 1 report, and PR checklist. |
+| G0-R15 | Active dependency licenses reconciled/verified | FAIL | Ledger exists, but current `Cargo.lock` dependency licenses still require authoritative verification and compatibility review. |
 
 ## 2. Verification
 
@@ -43,8 +44,7 @@ None identified.
 
 - Repository visibility is unresolved while TP is intended to remain proprietary and restricted.
 - GitHub ruleset/branch-protection enforcement has not yet been verified/configured.
-- Dependency-license inventory mechanism is not yet established.
-- ADR convention/template is not yet established.
+- Active Rust dependency licenses have not yet been fully reconciled against `Cargo.lock` and authoritative license metadata.
 
 ### Minor
 
@@ -59,6 +59,9 @@ The repository now has multiple mutually reinforcing discovery surfaces:
 - CONTRIBUTING for humans;
 - PR template for proposed changes;
 - gate status + master roadmap for current/long-term direction;
+- Gate 0/1 evidence reports;
+- ADR policy/template for durable technical decisions;
+- third-party license ledger;
 - CODEOWNERS for review routing where GitHub rules enforce it.
 
 The controlling rule is that passing CI never substitutes for a gate report or owner authorization.
@@ -67,7 +70,7 @@ The controlling rule is that passing CI never substitutes for a gate report or o
 
 The root proprietary license is present. Because the repository is currently public, source confidentiality is not achieved merely by the proprietary license. Gate 0 must record the owner's final repository visibility decision.
 
-Third-party dependency licensing must be inventoried before this gate passes.
+`THIRD_PARTY_LICENSES.md` now defines the dependency-license process, but the active M1 dependency set must still be reconciled and verified before Gate 0 passes.
 
 ## 6. Documentation Audit
 
@@ -76,7 +79,7 @@ PASS for current governance documents, subject to future consistency review when
 ## 7. Final Decision
 
 **Decision:** FAIL / ACTIVE  
-**Reason:** governance scaffolding is installed, but visibility, dependency-license inventory, ADR convention, and GitHub ruleset enforcement remain unresolved.
+**Reason:** governance scaffolding is installed, but visibility, active dependency-license reconciliation, and GitHub ruleset/branch-protection enforcement remain unresolved.
 
 ### Owner authorization
 
