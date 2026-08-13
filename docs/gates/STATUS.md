@@ -6,7 +6,7 @@ Last updated: 2026-08-12
 
 | Gate | Name | State | Notes |
 |---|---|---|---|
-| 0 | Governance, Repository Control, and IP | ACTIVE | Governance controls are being installed. Repository visibility decision remains unresolved. |
+| 0 | Governance, Repository Control, and IP | ACTIVE | Public-repository decision, proprietary policy, ADR process, dependency-license audit, and Gate Policy are complete. Only verified server-side protection of `main` remains. |
 | 1 | M1 Adversarial Stabilization | ACTIVE | Current M1 implementation is under adversarial review. Known semantic defects must be repaired before this gate can pass. |
 | 2 | M1 Semantic Freeze | LOCKED | Depends on Gate 1 PASSED. |
 | 3 | Compiler Architecture Foundation | LOCKED | Depends on Gate 2 PASSED. |
@@ -30,7 +30,9 @@ Last updated: 2026-08-12
 
 ## Current allowed work
 
-Only work necessary to complete Gate 0 or Gate 1 is authorized: governance/IP controls, M1 adversarial review, M1 regression tests/fixes, and verification/docs needed to close those gates.
+Only work necessary to complete Gate 0 or Gate 1 is authorized.
+
+The sole unresolved Gate 0 requirement is server-side protection of `main`. The repository intentionally remains public under `docs/decisions/ADR-0001-public-repository-for-ci.md` so TP can use public-repository GitHub-hosted CI while retaining proprietary licensing.
 
 Do not begin ownership/borrow checking, unsafe semantics, effects/capabilities, async/concurrency, package ecosystem expansion, C/WASM/JS/Python interop, LLVM/native generation, or self-hosting.
 
