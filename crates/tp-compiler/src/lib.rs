@@ -6,7 +6,10 @@ mod lexer;
 mod parser;
 mod pipeline;
 mod source;
+mod symbol;
 mod token;
+mod typecheck;
+mod types;
 
 pub use ast::{
     BinaryOp, Block, EnumDecl, Expr, ExprKind, FieldDecl, FnDecl, ImportDecl, Item, MatchArm,
@@ -17,4 +20,7 @@ pub use lexer::{LexResult, Lexer};
 pub use parser::{ParseResult, Parser};
 pub use pipeline::{CompileReport, Compiler};
 pub use source::{LineCol, SourceFile, SourceId, Span};
+pub use symbol::{Binding, Scopes, SymbolId};
 pub use token::{Token, TokenKind};
+pub use typecheck::{TypeCheckResult, TypeChecker};
+pub use types::Type;
