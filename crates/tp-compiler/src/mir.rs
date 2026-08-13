@@ -50,6 +50,7 @@ pub enum MirStatement {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Rvalue {
     Use(Operand),
+    Function(String),
     Unary {
         op: UnaryOp,
         operand: Operand,
@@ -60,7 +61,7 @@ pub enum Rvalue {
         right: Operand,
     },
     Call {
-        callee: String,
+        callee: Operand,
         args: Vec<Operand>,
     },
     Struct {
