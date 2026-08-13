@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/tp-compiler",
+    "crates/tp-cli",
 ]
 resolver = "2"
 
