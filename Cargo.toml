@@ -1,0 +1,10 @@
+[workspace]
+members = [
+    "crates/tp-compiler",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2024"
+license = "LicenseRef-TP-Proprietary"
+rust-version = "1.85"
