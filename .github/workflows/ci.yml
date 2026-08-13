@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [m1-executable-core-clean]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install stable Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Lint workspace
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Test workspace
+        run: cargo test --workspace
+      - name: Smoke hello example
+        shell: bash
+        run: |
+          output="$(cargo run --quiet -p tp-cli -- run examples/hello.tp)"
+          test "$output" = "Hello from TP"
+      - name: Smoke fibonacci example
+        shell: bash
+        run: |
+          output="$(cargo run --quiet -p tp-cli -- run examples/fibonacci.tp)"
+          test "$output" = "55"
