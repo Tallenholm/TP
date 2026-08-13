@@ -6,7 +6,7 @@
 **Implementation PR:** governance changes applied directly to `main` by project owner instruction  
 **Report date:** 2026-08-12
 
-> Gate 0 is not yet PASSED. Repository visibility, dependency-license reconciliation, and GitHub ruleset/branch-protection enforcement remain explicit blockers.
+> Gate 0 is not yet PASSED. All repository/document/IP/dependency requirements are satisfied except verified server-side protection of `main`.
 
 ## 1. Requirements
 
@@ -21,18 +21,32 @@
 | G0-R07 | Project-owner review routing | PASS | `.github/CODEOWNERS` |
 | G0-R08 | README makes gate policy visible | PASS | `README.md` |
 | G0-R09 | Proprietary root license exists | PASS | `LICENSE` |
-| G0-R10 | Repository visibility decision resolved | FAIL | Repository remains public at report creation; owner has not yet recorded final private/public decision in Gate 0. |
-| G0-R11 | Dependency-license inventory process/file established | PASS | `THIRD_PARTY_LICENSES.md` establishes required ledger/process. |
+| G0-R10 | Repository visibility decision resolved | PASS | `docs/decisions/ADR-0001-public-repository-for-ci.md`; owner intentionally keeps TP public for CI/resources while retaining proprietary licensing. |
+| G0-R11 | Dependency-license inventory process/file established | PASS | `THIRD_PARTY_LICENSES.md`. |
 | G0-R12 | ADR convention/template established | PASS | `docs/decisions/README.md` and `docs/decisions/TEMPLATE.md`. |
-| G0-R13 | GitHub branch/ruleset enforcement reviewed/configured where available | FAIL | CODEOWNERS exists, but repository settings/ruleset enforcement still require review. |
-| G0-R14 | Governance copies on active M1 branch | PASS | Active branch contains `AGENTS.md`, master roadmap, gate status/report template, contribution policy, README gate warning, Gate 1 report, and PR checklist. |
-| G0-R15 | Active dependency licenses reconciled/verified | FAIL | Ledger exists, but current `Cargo.lock` dependency licenses still require authoritative verification and compatibility review. |
+| G0-R13 | GitHub branch/ruleset enforcement reviewed/configured where available | FAIL | Repository ruleset API currently reports no repository rulesets. The GitHub integration cannot read/write legacy branch protection administration (403 for protection read). Manual owner configuration/verification is required; see `docs/gates/GATE-00-MANUAL-BRANCH-PROTECTION.md`. |
+| G0-R14 | Governance copies on active M1 branch | PASS | Active branch contains the mandatory governance controls and Gate 1 report. |
+| G0-R15 | Active dependency licenses reconciled/verified | PASS | Exact third-party set from active M1 `Cargo.lock` reconciled in `THIRD_PARTY_LICENSES.md`; permissive dependency set recorded, including Unicode-3.0 obligations for `unicode-ident`. |
+| G0-R16 | Automated gate-policy workflow exists | PASS | `.github/workflows/gate-policy.yml` rejects PRs that lack a PASS gate report, explicit owner authorization, or contain OPEN findings. |
 
 ## 2. Verification
 
-Manual repository inspection must confirm the files above are present on `main` and the active M1 branch.
+### Repository state
 
-No code/test verification is required for documentation-only requirements, but any automation/ruleset added later must have its own verification evidence.
+- Repository: `Tallenholm/TP`
+- Default branch: `main`
+- Visibility: `public`
+- Owner/admin access: confirmed for `Tallenholm`
+- Repository rulesets returned by GitHub API during Gate 0 review: none.
+- Legacy branch-protection read through the installed GitHub integration: inaccessible (403 / administration permission limitation), so protection cannot be claimed without manual owner verification.
+
+### Public CI rationale
+
+GitHub's current documentation states that standard GitHub-hosted runners are free and unlimited for public repositories. Larger runners remain separately billable. ADR-0001 records the owner's decision to keep TP public for this reason.
+
+### Dependency audit
+
+The active M1 `Cargo.lock` was enumerated and every third-party registry package was entered in `THIRD_PARTY_LICENSES.md`. The set consists of permissive MIT / Apache-2.0 family dependencies plus `unicode-ident`, whose declared expression additionally requires Unicode-3.0 compliance for Unicode-derived data.
 
 ## 3. Review Findings
 
@@ -42,9 +56,7 @@ None identified.
 
 ### Major
 
-- Repository visibility is unresolved while TP is intended to remain proprietary and restricted.
-- GitHub ruleset/branch-protection enforcement has not yet been verified/configured.
-- Active Rust dependency licenses have not yet been fully reconciled against `Cargo.lock` and authoritative license metadata.
+- **G0-M01 — `main` server-side enforcement is not yet proven/configured.** Written policy, CODEOWNERS, PR templates, and Gate Policy CI exist, but without branch protection/ruleset enforcement an administrator could still merge/push around those checks. Gate 0 cannot pass until this is resolved.
 
 ### Minor
 
@@ -52,37 +64,40 @@ None currently recorded.
 
 ## 4. Architecture / Governance Review
 
-The repository now has multiple mutually reinforcing discovery surfaces:
+The repository has mutually reinforcing discovery and enforcement surfaces:
 
 - `AGENTS.md` for agent-aware tooling;
 - README warning for casual readers;
-- CONTRIBUTING for humans;
+- `CONTRIBUTING.md` for humans;
 - PR template for proposed changes;
 - gate status + master roadmap for current/long-term direction;
 - Gate 0/1 evidence reports;
-- ADR policy/template for durable technical decisions;
+- ADR policy/template for durable decisions;
 - third-party license ledger;
-- CODEOWNERS for review routing where GitHub rules enforce it.
+- CODEOWNERS for owner routing;
+- Gate Policy GitHub Actions workflow for automated gate validation.
 
-The controlling rule is that passing CI never substitutes for a gate report or owner authorization.
+The controlling rule remains: passing ordinary CI never substitutes for a gate report or owner authorization.
 
 ## 5. Security / IP Review
 
-The root proprietary license is present. Because the repository is currently public, source confidentiality is not achieved merely by the proprietary license. Gate 0 must record the owner's final repository visibility decision.
+The root proprietary license remains present. Public source visibility is an intentional owner decision recorded in ADR-0001; TP is public for CI/infrastructure economics, not because it is open source.
 
-`THIRD_PARTY_LICENSES.md` now defines the dependency-license process, but the active M1 dependency set must still be reconciled and verified before Gate 0 passes.
+Secrets must never be committed to the public repository. Future credentials must use GitHub secrets/permissions or other approved secret-management mechanisms.
+
+The current Rust dependency graph has been reconciled. Release/distribution gates must still generate exact third-party notices from their release lockfile, including Unicode-3.0 obligations where applicable.
 
 ## 6. Documentation Audit
 
-PASS for current governance documents, subject to future consistency review whenever the process changes.
+PASS for current governance documentation. The only unresolved Gate 0 requirement is server-side `main` protection.
 
 ## 7. Final Decision
 
 **Decision:** FAIL / ACTIVE  
-**Reason:** governance scaffolding is installed, but visibility, active dependency-license reconciliation, and GitHub ruleset/branch-protection enforcement remain unresolved.
+**Reason:** G0-R13 / G0-M01 remains open. GitHub server-side protection of `main` has not been verified/configured, so the written gates are not yet technically enforced against bypass.
 
 ### Owner authorization
 
-**Next gate authorized to open:** Gate 1 is already ACTIVE for stabilization only; Gate 2 and later gates remain LOCKED.  
+**Next gate authorized to open:** Gate 1 remains ACTIVE for stabilization only; Gate 2 and later gates remain LOCKED.  
 **Owner:** Timothy Holm  
-**Approval record:** Owner explicitly adopted the gated roadmap and requested repository-wide enforcement/discoverability.
+**Approval record:** Owner adopted the gated roadmap and explicitly approved keeping TP public to maximize free public-repository CI/resources while retaining proprietary licensing.
