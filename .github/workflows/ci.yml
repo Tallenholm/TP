@@ -2,12 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [m1-executable-core]
+    branches: [m1-executable-core-clean]
   pull_request:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify:
@@ -19,24 +19,19 @@ jobs:
         run: |
           rustup toolchain install stable --profile minimal --component rustfmt --component clippy
           rustup default stable
-      - name: Apply formatting
-        run: cargo fmt --all
-      - name: Apply machine-fixable lints
-        shell: bash
-        run: cargo clippy --fix --workspace --all-targets --allow-dirty --allow-staged -- -D warnings || true
-      - name: Commit autofixes
-        shell: bash
-        run: |
-          if ! git diff --quiet; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add .
-            git commit -m "style: format and autofix Rust sources"
-            git push origin HEAD:m1-executable-core
-          fi
       - name: Check formatting
         run: cargo fmt --all -- --check
       - name: Lint workspace
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Test workspace
         run: cargo test --workspace
+      - name: Smoke hello example
+        shell: bash
+        run: |
+          output="$(cargo run --quiet -p tp-cli -- run examples/hello.tp)"
+          test "$output" = "Hello from TP"
+      - name: Smoke fibonacci example
+        shell: bash
+        run: |
+          output="$(cargo run --quiet -p tp-cli -- run examples/fibonacci.tp)"
+          test "$output" = "55"
