@@ -8,6 +8,9 @@ pub struct Module {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Item {
     Function(FnDecl),
+    Struct(StructDecl),
+    Enum(EnumDecl),
+    Import(ImportDecl),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -16,6 +19,43 @@ pub struct FnDecl {
     pub params: Vec<Param>,
     pub return_type: Option<TypeRef>,
     pub body: Block,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StructDecl {
+    pub name: String,
+    pub type_params: Vec<String>,
+    pub fields: Vec<FieldDecl>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct EnumDecl {
+    pub name: String,
+    pub type_params: Vec<String>,
+    pub variants: Vec<VariantDecl>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImportDecl {
+    pub module: String,
+    pub alias: Option<String>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct FieldDecl {
+    pub name: String,
+    pub ty: TypeRef,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct VariantDecl {
+    pub name: String,
+    pub payload: Vec<TypeRef>,
     pub span: Span,
 }
 
@@ -107,6 +147,44 @@ pub enum ExprKind {
         condition: Box<Expr>,
         then_branch: Block,
         else_branch: Option<Block>,
+    },
+    StructLiteral {
+        type_name: String,
+        fields: Vec<(String, Expr)>,
+    },
+    Field {
+        base: Box<Expr>,
+        field: String,
+    },
+    Match {
+        value: Box<Expr>,
+        arms: Vec<MatchArm>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct MatchArm {
+    pub pattern: Pattern,
+    pub body: Expr,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Pattern {
+    pub kind: PatternKind,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum PatternKind {
+    Wildcard,
+    Name(String),
+    Integer(i64),
+    Bool(bool),
+    String(String),
+    Variant {
+        name: String,
+        args: Vec<Pattern>,
     },
 }
 
