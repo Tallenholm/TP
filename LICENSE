@@ -1,0 +1,45 @@
+TP PROPRIETARY LICENSE
+
+Copyright (c) 2026 Timothy Holm. All Rights Reserved.
+
+NOTICE: THIS SOFTWARE AND REPOSITORY ARE PROPRIETARY. NO OPEN-SOURCE LICENSE IS GRANTED.
+
+1. Ownership
+
+All source code, documentation, specifications, designs, tests, examples, data, assets, concepts expressed in protectable form, and other materials contained in this repository (collectively, the "Materials") are owned by Timothy Holm or their respective identified owners and are protected by applicable intellectual-property laws.
+
+2. No License Granted
+
+Except for the limited rights that must be granted to GitHub and GitHub users under GitHub's applicable Terms of Service solely as a consequence of hosting a public repository on GitHub, no license or other permission is granted, whether express, implied, by estoppel, or otherwise, under any copyright, patent, trademark, trade-secret, or other intellectual-property right.
+
+3. Prohibited Uses
+
+Without prior express written permission from Timothy Holm, you may not, in whole or in part:
+
+- copy, reproduce, download for reuse, republish, or redistribute the Materials;
+- modify, adapt, translate, port, or create derivative works from the Materials;
+- compile, execute, deploy, host, integrate, embed, or otherwise use the Materials in another software project, product, service, research project, or commercial or non-commercial offering;
+- sell, sublicense, rent, lease, transfer, assign, or otherwise make the Materials available to another person or entity;
+- use the Materials to create or improve a competing or substantially similar programming language, compiler, runtime, toolchain, package ecosystem, service, or product;
+- use the Materials as training, fine-tuning, evaluation, benchmark, retrieval, or other input for an artificial-intelligence or machine-learning model or dataset, except to the extent such restriction is preempted by rights expressly granted under GitHub's applicable Terms of Service or otherwise required by law;
+- remove, obscure, or alter this notice or any copyright, authorship, attribution, or proprietary-rights notice.
+
+4. GitHub-Limited Permission
+
+If this repository is publicly visible on GitHub, any permission arising solely from GitHub's Terms of Service is limited to the scope required by those Terms and GitHub's functionality. Such permission does not constitute an open-source license and does not grant any additional right to use, modify, distribute, commercialize, deploy, or create derivative works from the Materials outside that limited scope.
+
+5. Contributions
+
+No pull request, issue, discussion, suggestion, patch, code submission, or other contribution is accepted as transferring ownership of TP or granting any third party rights in TP. Any contribution that may be considered for inclusion requires terms acceptable to the repository owner. Submission of material does not grant the submitter any license to the existing Materials.
+
+6. Permission Requests
+
+Any permission not expressly granted in this notice must be obtained in advance and in writing from Timothy Holm.
+
+7. Reservation of Rights
+
+All rights not expressly granted are reserved. No waiver of any right is effective unless made expressly in writing by the rights holder.
+
+8. No Warranty
+
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE MATERIALS ARE PROVIDED "AS IS" FOR VIEWING ONLY, WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED. THE OWNER DISCLAIMS ALL LIABILITY ARISING FROM UNAUTHORIZED OR PERMITTED ACCESS TO THE MATERIALS TO THE MAXIMUM EXTENT PERMITTED BY LAW.
