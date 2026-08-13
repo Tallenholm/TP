@@ -1,6 +1,6 @@
 use crate::{
-    Diagnostic, HirLowerer, HirModule, Lexer, MirLowerer, MirModule, Module, Parser, SourceFile,
-    TypeChecker,
+    Diagnostic, HirLowerer, HirModule, Interpreter, Lexer, MirLowerer, MirModule, Module, Parser,
+    RuntimeError, SourceFile, TypeChecker, Value,
 };
 
 #[derive(Debug, Default)]
@@ -34,6 +34,18 @@ impl Compiler {
         Ok(MirLowerer::lower(&hir))
     }
 
+    pub fn run_source(&self, name: &str, source: &str) -> Result<RunReport, RunFailure> {
+        let mir = self
+            .lower_mir_source(name, source)
+            .map_err(RunFailure::Compile)?;
+        let mut interpreter = Interpreter::new(&mir);
+        let value = interpreter.run_main().map_err(RunFailure::Runtime)?;
+        Ok(RunReport {
+            value,
+            output: interpreter.into_output(),
+        })
+    }
+
     fn checked_module(&self, name: &str, source: &str) -> Result<Module, Vec<Diagnostic>> {
         let source_file = SourceFile::new(name, source);
         let lexed = Lexer::new(&source_file).lex();
@@ -58,4 +70,16 @@ impl Compiler {
 #[derive(Debug, Default)]
 pub struct CompileReport {
     pub diagnostics: Vec<Diagnostic>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct RunReport {
+    pub value: Value,
+    pub output: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum RunFailure {
+    Compile(Vec<Diagnostic>),
+    Runtime(RuntimeError),
 }
