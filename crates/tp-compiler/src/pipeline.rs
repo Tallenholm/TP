@@ -1,4 +1,7 @@
-use crate::{Diagnostic, HirLowerer, HirModule, Lexer, Module, Parser, SourceFile, TypeChecker};
+use crate::{
+    Diagnostic, HirLowerer, HirModule, Lexer, MirLowerer, MirModule, Module, Parser, SourceFile,
+    TypeChecker,
+};
 
 #[derive(Debug, Default)]
 pub struct Compiler;
@@ -20,6 +23,15 @@ impl Compiler {
     pub fn lower_source(&self, name: &str, source: &str) -> Result<HirModule, Vec<Diagnostic>> {
         let module = self.checked_module(name, source)?;
         Ok(HirLowerer::lower(&module))
+    }
+
+    pub fn lower_mir_source(
+        &self,
+        name: &str,
+        source: &str,
+    ) -> Result<MirModule, Vec<Diagnostic>> {
+        let hir = self.lower_source(name, source)?;
+        Ok(MirLowerer::lower(&hir))
     }
 
     fn checked_module(&self, name: &str, source: &str) -> Result<Module, Vec<Diagnostic>> {
