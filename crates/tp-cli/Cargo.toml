@@ -10,4 +10,5 @@ name = "tp"
 path = "src/main.rs"
 
 [dependencies]
+clap = { version = "4", features = ["derive"] }
 tp-compiler = { path = "../tp-compiler" }
