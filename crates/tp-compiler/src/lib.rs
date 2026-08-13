@@ -2,7 +2,9 @@
 
 mod ast;
 mod diagnostic;
+mod hir;
 mod lexer;
+mod lower_hir;
 mod parser;
 mod pipeline;
 mod source;
@@ -16,7 +18,12 @@ pub use ast::{
     Module, Param, Pattern, PatternKind, Stmt, StructDecl, TypeRef, UnaryOp, VariantDecl,
 };
 pub use diagnostic::{render_diagnostic, Diagnostic, Label, Severity};
+pub use hir::{
+    HirBlock, HirExpr, HirExprKind, HirFunction, HirMatchArm, HirModule, HirParam, HirPattern,
+    HirPatternKind, HirStmt,
+};
 pub use lexer::{LexResult, Lexer};
+pub use lower_hir::HirLowerer;
 pub use parser::{ParseResult, Parser};
 pub use pipeline::{CompileReport, Compiler};
 pub use source::{LineCol, SourceFile, SourceId, Span};
