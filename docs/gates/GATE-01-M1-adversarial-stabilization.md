@@ -5,7 +5,7 @@
 **Specification revision:** `docs/superpowers/specs/2026-08-12-universal-language-design.md`  
 **Implementation PR:** #1  
 **Head commit at report creation:** see PR head  
-**Report date:** 2026-08-12
+**Report date:** 2026-11-07
 
 > This gate is NOT PASSED. PR #1 must remain draft/unmerged until this report satisfies every mandatory gate requirement and Timothy Holm approves advancement.
 
@@ -13,7 +13,7 @@
 
 | ID | Requirement | Status | Evidence / blocker |
 |---|---|---|---|
-| G1-R01 | Complete adversarial review of all M1 subsystems | FAIL | Review started but not complete. |
+| G1-R01 | Complete adversarial review of all M1 subsystems | PASS | Full source/lexer/parser/AST/symbol/type/HIR/MIR/interpreter/module/pipeline/CLI/tests/docs/CI review completed 2026-11-07; findings retained below. |
 | G1-R02 | Correct path-sensitive return/control-flow validation | FAIL | Known unsound `contains_explicit_return` behavior. |
 | G1-R03 | Correct short-circuit semantics for `&&` and `||` | FAIL | MIR currently lowers both operands eagerly. |
 | G1-R04 | Validate declared types and generic arity/parameters | FAIL | Additional validation required. |
@@ -37,11 +37,13 @@ Every finding must remain here until resolved. Do not delete findings after fixe
 | M1-001 | Major | Type/control flow | Function validation treats the existence of any explicit return as sufficient to suppress tail-result checking, allowing missing-return paths. | `fn broken(x: Bool) -> i64 { if x { return 1; } }` | Replace heuristic with path/control-flow analysis; RED -> GREEN regression suite. | OPEN |
 | M1-002 | Major | MIR/runtime semantics | `&&` / `||` are lowered as ordinary eager binary expressions, so RHS side effects/traps occur when they should be skipped. | `false && dangerous()`; `true || dangerous()` | Lower through branches/join blocks and add side-effect/trap regressions. | OPEN |
 | M1-003 | Major | Type system | Unknown type names are materialized as named types without proving declarations exist; generic arity/parameter validation requires hardening. | Undeclared type signatures/generic edge cases. | Central type-name resolution and generic-arity diagnostics with tests. | OPEN |
-| M1-004 | Major | Diagnostics | Rich source renderer exists but CLI output discards source locations/labels/help; multi-file source retention is insufficient for final diagnostic contract. | Compare `render_diagnostic` capability with CLI emission. | SourceManager/end-to-end source-aware human + JSON diagnostics. | OPEN |
-| M1-005 | Major | Architecture | Type/semantic knowledge is independently reconstructed in TypeChecker and HIR lowering, risking semantic drift. | Duplicate function/type/variant inference maps and substitution logic. | Refactor to one checked semantic model feeding typed HIR. | OPEN |
-| M1-006 | Major | Module system | Recursive namespace-rewrite loader needs broader duplicate/diamond/alias/canonicalization/symlink/platform adversarial coverage. | Current loader flattens and rewrites modules recursively. | Define semantics and add conformance/regression matrix. | OPEN |
+| M1-004 | Major | Diagnostics | CLI output discards source locations/labels/help; multi-file source retention is insufficient. The renderer itself ignores secondary labels and uses byte length for caret width, producing incorrect Unicode/multi-line highlighting. | Compare `render_diagnostic` with CLI emission; inspect secondary-label and Unicode spans. | SourceManager/end-to-end source-aware human + JSON diagnostics, including correct label/span rendering. | OPEN |
+| M1-005 | Major | Architecture | Type/semantic knowledge is independently reconstructed in TypeChecker and HIR lowering, risking semantic drift. HIR pattern bindings also lose their concrete type when MIR locals are created as `Unknown`. | Duplicate function/type/variant inference maps/substitution logic; `HirPatternKind::Bind` -> MIR local `Type::Unknown`. | Refactor to one checked semantic model feeding typed HIR/MIR and preserve checked binding types. | OPEN |
+| M1-006 | Major | Module system | Recursive namespace-rewrite loader needs broader duplicate/diamond/alias/canonicalization/symlink/platform coverage. Canonical paths are used only for cycle detection, not global module identity/deduplication, and imported nominal types/struct constructors are not expressible through current qualification rewriting. | Current loader recursively re-loads modules; `util.twice` works, but qualified imported type/constructor paths do not. | Define module identity/qualification semantics and add the full conformance/regression matrix. | OPEN |
 | M1-007 | Major | Entry point | `main` shape is not fully validated statically; invalid parameter shape can survive until interpreter execution. | `fn main(x: i64) {}` | Define executable entry-point contract and enforce in semantic analysis. | OPEN |
-| M1-008 | Major | Literals/parser | Numeric parse/range failures can collapse into generic parse failure instead of stable literal-range diagnostics; float/special-value policy not frozen. | oversized integer/float boundary cases. | Define literal semantics and stable diagnostics; add boundaries. | OPEN |
+| M1-008 | Major | Literals/parser | Oversized integer parsing uses `.parse::<i64>().ok()?` after consuming the token, so a range failure can produce no diagnostic and the parser can recover by silently dropping the statement. `i64::MIN` unary-minus handling, float non-finite policy, raw-newline strings, escapes, and Unicode identifier policy also need hardening. | oversized integer statement; `-9223372036854775808`; huge float; raw newline string; Unicode boundary cases. | Define M1 boundary semantics and stable diagnostics; never silently discard an invalid literal. | OPEN |
+| M1-009 | Major | Pattern matching | Compile-time exhaustiveness is enforced only for enum matches. Non-exhaustive Bool/literal matches can pass checking and lower to an `otherwise` runtime trap, contradicting the design requirement for compile-time exhaustiveness checking. | `fn main(x: Bool) -> i64 { match x { true => 1 } }` can reach MIR runtime trap for `false`. | Require exhaustive finite-domain coverage where provable and require wildcard/default coverage for open/infinite literal domains; add unreachable/duplicate-arm policy tests. | OPEN |
+| M1-010 | Major | Name resolution / semantic consistency | Global value-name precedence is inconsistent across checker, HIR, and MIR. Function/enum-variant collisions and user declarations named `print` can be accepted yet resolve differently across stages, producing wrong HIR types or runtime behavior. | Checker call path prefers variant over function; HIR name/call paths prefer function; MIR treats any global whose name is in the variant set as an enum constructor; runtime reserves `print`. | Centralize value-name resolution, define/reject conflicting declarations and reserved builtin collisions, and prove checked/HIR/MIR resolution agrees. | OPEN |
 
 Severity may only be changed with documented reasoning. More findings will be added as review continues.
 
@@ -59,6 +61,29 @@ No repair is complete until its test has been observed failing for the intended 
 | M1-006 | pending | NOT RECORDED | NOT RECORDED | — |
 | M1-007 | pending | NOT RECORDED | NOT RECORDED | — |
 | M1-008 | pending | NOT RECORDED | NOT RECORDED | — |
+| M1-009 | pending | NOT RECORDED | NOT RECORDED | — |
+| M1-010 | pending | NOT RECORDED | NOT RECORDED | — |
+
+## 3.1 Completed adversarial review scope
+
+The 2026-11-07 review explicitly inspected:
+
+- source IDs/spans and diagnostic rendering;
+- lexer/token behavior and literal boundaries;
+- parser/AST/recovery;
+- scopes/symbols/declaration collisions;
+- type checking, generics, match coverage, and return analysis;
+- HIR construction and checked-semantic duplication;
+- MIR lowering/control flow and local typing;
+- interpreter/runtime traps/evaluation order;
+- module loading, namespace rewriting, canonicalization, aliases, and source retention;
+- compiler pipeline orchestration;
+- CLI human/JSON diagnostics;
+- all current test suites/fixtures/examples;
+- Rust manifests, lockfile policy, toolchain file, and CI workflow;
+- README capability claims.
+
+No Critical finding was identified in this pass. Major findings M1-001 through M1-010 remain blocking. A fresh whole-branch adversarial review remains mandatory after all repairs.
 
 ## 4. Verification Commands
 
@@ -100,11 +125,11 @@ Not a Gate 1 exit focus unless a correctness repair causes a material regression
 
 ### Critical
 
-None identified yet. Review is incomplete; this does not mean the final count is zero.
+None identified yet. Initial full M1 review completed 2026-11-07. Final whole-branch review is still required after repairs.
 
 ### Major
 
-M1-001 through M1-008 are OPEN.
+M1-001 through M1-010 are OPEN.
 
 ### Minor
 
