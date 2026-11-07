@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use tp_compiler::{Compiler, Item, Lexer, Parser, RunFailure, SourceFile};
 
@@ -189,7 +189,7 @@ fn symlinked_imports_share_one_canonical_module_identity() {
     let source_count = report
         .sources
         .iter()
-        .filter(|source| PathBuf::from(source.name()) == canonical_real)
+        .filter(|source| Path::new(source.name()) == canonical_real.as_path())
         .count();
     assert_eq!(source_count, 1);
 
