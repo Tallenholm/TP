@@ -721,16 +721,14 @@ impl TypeChecker {
                 PatternCoverage::String(value) => covered_strings.contains(value),
                 PatternCoverage::CatchAll => catch_all,
                 PatternCoverage::Variant {
-                    irrefutable: false,
-                    ..
+                    irrefutable: false, ..
                 }
                 | PatternCoverage::Other => false,
             };
             let unreachable = previously_total || duplicate;
             if unreachable {
                 self.diagnostics.push(
-                    Diagnostic::error("TP-E0300", "unreachable match arm")
-                        .with_primary(arm.span),
+                    Diagnostic::error("TP-E0300", "unreachable match arm").with_primary(arm.span),
                 );
             } else {
                 match coverage {
@@ -751,8 +749,7 @@ impl TypeChecker {
                     }
                     PatternCoverage::CatchAll => catch_all = true,
                     PatternCoverage::Variant {
-                        irrefutable: false,
-                        ..
+                        irrefutable: false, ..
                     }
                     | PatternCoverage::Other => {}
                 }
