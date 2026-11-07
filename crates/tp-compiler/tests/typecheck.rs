@@ -209,10 +209,9 @@ fn nominal_generic_arity_is_checked() {
 fn duplicate_generic_parameters_are_rejected() {
     let report = check("struct Pair<T, T> { value: T }");
     assert!(
-        report
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.message.contains("duplicate generic parameter `T`")),
+        report.diagnostics.iter().any(|diagnostic| diagnostic
+            .message
+            .contains("duplicate generic parameter `T`")),
         "{:#?}",
         report.diagnostics
     );
