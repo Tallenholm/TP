@@ -99,3 +99,45 @@ fn parses_struct_construction_and_field_access() {
     };
     assert!(matches!(&expr.kind, ExprKind::Field { field, .. } if field == "name"));
 }
+
+#[test]
+fn oversized_integer_literal_reports_range_error() {
+    let result = parse("fn main() { 9223372036854775808; }");
+    assert!(
+        result
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("integer literal out of range for i64")),
+        "{:#?}",
+        result.diagnostics
+    );
+}
+
+#[test]
+fn oversized_integer_pattern_reports_range_error() {
+    let result = parse(
+        "fn main(x: i64) -> i64 { match x { 9223372036854775808 => 1, _ => 0 } }",
+    );
+    assert!(
+        result
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("integer literal out of range for i64")),
+        "{:#?}",
+        result.diagnostics
+    );
+}
+
+#[test]
+fn non_finite_float_literal_is_rejected() {
+    let huge = format!("fn main() {{ {}.0; }}", "9".repeat(400));
+    let result = parse(&huge);
+    assert!(
+        result
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("float literal must be finite f64")),
+        "{:#?}",
+        result.diagnostics
+    );
+}

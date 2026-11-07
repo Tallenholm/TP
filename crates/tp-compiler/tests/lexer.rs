@@ -88,3 +88,53 @@ fn lexes_literals_comments_keywords_and_operators() {
     assert!(kinds.contains(&As));
     assert_eq!(kinds.last(), Some(&Eof));
 }
+
+#[test]
+fn raw_newline_in_string_is_rejected() {
+    let source = SourceFile::new("main.tp", "fn main() { \"first\nsecond\"; }");
+    let result = Lexer::new(&source).lex();
+    assert!(
+        result
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("newline in string literal")),
+        "{:#?}",
+        result.diagnostics
+    );
+}
+
+#[test]
+fn invalid_string_escape_is_rejected() {
+    let source = SourceFile::new("main.tp", r#"fn main() { "bad\q"; }"#);
+    let result = Lexer::new(&source).lex();
+    assert!(
+        result
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("invalid string escape")),
+        "{:#?}",
+        result.diagnostics
+    );
+}
+
+#[test]
+fn unicode_alphabetic_identifier_is_accepted_without_normalization() {
+    let source = SourceFile::new("main.tp", "fn café() { }");
+    let result = Lexer::new(&source).lex();
+    assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
+    assert!(result.tokens.iter().any(|token| token.kind == TokenKind::Identifier));
+}
+
+#[test]
+fn combining_mark_identifier_spelling_is_rejected() {
+    let source = SourceFile::new("main.tp", "fn cafe\u{301}() { }");
+    let result = Lexer::new(&source).lex();
+    assert!(
+        result
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("invalid character")),
+        "{:#?}",
+        result.diagnostics
+    );
+}

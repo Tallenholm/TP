@@ -120,3 +120,11 @@ fn run_requires_main_before_interpreter_execution() {
         "{diagnostics:#?}"
     );
 }
+
+#[test]
+fn exact_i64_min_literal_executes() {
+    let report = Compiler::new()
+        .run_source("main.tp", "fn main() -> i64 { -9223372036854775808 }")
+        .expect("i64::MIN must be representable");
+    assert_eq!(report.value.as_i64(), Some(i64::MIN));
+}
