@@ -286,7 +286,7 @@ fn main() -> i64 {
 }
 ```
 
-The M1 loader resolves sibling imports relative to the importing file and rejects import cycles. Broader module-graph, alias, canonical-path, diamond-import, and imported-type behavior is still under Gate 1 adversarial hardening.
+The M1 loader resolves sibling imports relative to the importing file, canonicalizes module identity, deduplicates repeated/diamond imports, supports aliases and qualified imported types/constructors, and rejects import cycles. The exact stabilized M1 policy is documented in [`docs/M1_MODULE_SEMANTICS.md`](docs/M1_MODULE_SEMANTICS.md).
 
 ---
 
