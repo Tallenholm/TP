@@ -1,4 +1,4 @@
-use tp_compiler::{Compiler, Terminator};
+use tp_compiler::{Compiler, Terminator, Type};
 
 #[test]
 fn if_expression_creates_branch_and_join_blocks() {
@@ -37,4 +37,26 @@ fn while_creates_back_edge() {
     assert!(function.blocks.iter().any(|block| {
         matches!(block.terminator, Terminator::Goto(target) if target.0 <= block.id.0)
     }));
+}
+
+#[test]
+fn match_binding_local_keeps_checked_payload_type() {
+    let mir = Compiler::new()
+        .lower_mir_source(
+            "main.tp",
+            "enum Option<T> { Some(T), None } fn main() -> i64 { let x = Some(42); match x { Some(v) => v, None => 0 } }",
+        )
+        .expect("valid TP should lower to MIR");
+    let function = mir
+        .functions
+        .iter()
+        .find(|function| function.name == "main")
+        .expect("main function");
+    let binding = function
+        .locals
+        .iter()
+        .find(|local| local.name.as_deref() == Some("v"))
+        .expect("match binding local");
+
+    assert_eq!(binding.ty, Type::I64);
 }
