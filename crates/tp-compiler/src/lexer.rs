@@ -152,6 +152,28 @@ impl<'a> Lexer<'a> {
                         None => break,
                     }
                 }
+                '\n' | '\r' => {
+                    let newline_start = self.offset;
+                    self.advance();
+                    diagnostics.push(
+                        Diagnostic::error("TP-E0001", "newline in string literal")
+                            .with_primary(Span::new(
+                                self.source.id(),
+                                newline_start,
+                                self.offset,
+                            )),
+                    );
+
+                    while let Some(next) = self.current() {
+                        if next == '"' {
+                            self.advance();
+                            terminated = true;
+                            break;
+                        }
+                        self.advance();
+                    }
+                    break;
+                }
                 _ => {
                     self.advance();
                 }
