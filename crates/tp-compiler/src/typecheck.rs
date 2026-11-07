@@ -1,8 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    BinaryOp, Block, Diagnostic, Expr, ExprKind, FnDecl, Item, MatchArm, Module, Pattern,
-    PatternKind, Scopes, Span, Stmt, Type, TypeRef, UnaryOp,
+    BinaryOp, Block, Diagnostic, Expr, ExprKind, FnDecl, HirGlobalKind, Item, MatchArm, Module,
+    Pattern, PatternKind, Scopes, SemanticModel, Span, Stmt, Type, TypeRef, UnaryOp,
 };
 
 #[derive(Debug, Clone)]
@@ -38,6 +38,7 @@ struct EnumInfo {
 #[derive(Debug, Default)]
 pub struct TypeCheckResult {
     pub diagnostics: Vec<Diagnostic>,
+    pub semantic: SemanticModel,
 }
 
 pub struct TypeChecker {
@@ -47,6 +48,7 @@ pub struct TypeChecker {
     variants: HashMap<String, VariantInfo>,
     scopes: Scopes,
     diagnostics: Vec<Diagnostic>,
+    semantic: SemanticModel,
     expected_return: Type,
 }
 
@@ -59,6 +61,7 @@ impl TypeChecker {
             variants: HashMap::new(),
             scopes: Scopes::new(),
             diagnostics: Vec::new(),
+            semantic: SemanticModel::default(),
             expected_return: Type::Unit,
         };
         checker.collect_types(module);
@@ -66,6 +69,7 @@ impl TypeChecker {
         checker.check_functions(module);
         TypeCheckResult {
             diagnostics: checker.diagnostics,
+            semantic: checker.semantic,
         }
     }
 
@@ -336,18 +340,24 @@ impl TypeChecker {
                 if let Some(binding) = self.scopes.get(name) {
                     return binding.ty.clone();
                 }
-                if let Some(function) = self.functions.get(name) {
+                if let Some(function) = self.functions.get(name).cloned() {
+                    self.semantic
+                        .record_global(expr.span, HirGlobalKind::Function);
                     return Type::Function {
-                        params: function.params.clone(),
-                        result: Box::new(function.result.clone()),
+                        params: function.params,
+                        result: Box::new(function.result),
                     };
                 }
                 if let Some(variant) = self.variants.get(name).cloned() {
                     if variant.payload.is_empty() {
+                        self.semantic
+                            .record_global(expr.span, HirGlobalKind::Variant);
                         return enum_instance(&variant, &HashMap::new());
                     }
                 }
                 if name == "print" {
+                    self.semantic
+                        .record_global(expr.span, HirGlobalKind::Builtin);
                     return Type::Function {
                         params: vec![Type::Unknown],
                         result: Box::new(Type::Unit),
@@ -717,6 +727,8 @@ impl TypeChecker {
     fn check_call(&mut self, span: Span, callee: &Expr, args: &[Expr]) -> Type {
         if let ExprKind::Name(name) = &callee.kind {
             if name == "print" {
+                self.semantic
+                    .record_global(callee.span, HirGlobalKind::Builtin);
                 for arg in args {
                     self.check_expr(arg);
                 }
@@ -732,9 +744,13 @@ impl TypeChecker {
                 return Type::Unit;
             }
             if let Some(variant) = self.variants.get(name).cloned() {
+                self.semantic
+                    .record_global(callee.span, HirGlobalKind::Variant);
                 return self.check_variant_constructor(span, &variant, args);
             }
             if let Some(sig) = self.functions.get(name).cloned() {
+                self.semantic
+                    .record_global(callee.span, HirGlobalKind::Function);
                 if args.len() != sig.params.len() {
                     self.diagnostics.push(
                         Diagnostic::error(

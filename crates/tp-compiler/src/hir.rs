@@ -62,6 +62,13 @@ pub struct HirExpr {
     pub span: Span,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HirGlobalKind {
+    Function,
+    Variant,
+    Builtin,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum HirExprKind {
     Integer(i64),
@@ -69,7 +76,10 @@ pub enum HirExprKind {
     String(String),
     Bool(bool),
     Local(SymbolId),
-    Global(String),
+    Global {
+        name: String,
+        kind: HirGlobalKind,
+    },
     Unary {
         op: UnaryOp,
         expr: Box<HirExpr>,

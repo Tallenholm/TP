@@ -1,23 +1,16 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use crate::{
-    BasicBlock, BlockId, Constant, HirBlock, HirExpr, HirExprKind, HirFunction, HirModule,
-    HirPattern, HirPatternKind, HirStmt, LocalId, MirFunction, MirLocal, MirModule, MirPattern,
-    MirStatement, Operand, Rvalue, SymbolId, Terminator, Type,
+    BasicBlock, BlockId, Constant, HirBlock, HirExpr, HirExprKind, HirFunction, HirGlobalKind,
+    HirModule, HirPattern, HirPatternKind, HirStmt, LocalId, MirFunction, MirLocal, MirModule,
+    MirPattern, MirStatement, Operand, Rvalue, SymbolId, Terminator, Type,
 };
 
-pub struct MirLowerer {
-    variants: HashSet<String>,
-}
+pub struct MirLowerer;
 
 impl MirLowerer {
     pub fn lower(module: &HirModule) -> MirModule {
-        let variants = module
-            .enums
-            .iter()
-            .flat_map(|decl| decl.variants.iter().map(|variant| variant.name.clone()))
-            .collect();
-        let lowerer = Self { variants };
+        let lowerer = Self;
         MirModule {
             functions: module
                 .functions
@@ -30,7 +23,7 @@ impl MirLowerer {
     }
 
     fn lower_function(&self, function: &HirFunction) -> MirFunction {
-        let mut builder = FunctionBuilder::new(&self.variants);
+        let mut builder = FunctionBuilder::new();
         let entry = builder.new_block();
         builder.switch_to(entry);
 
@@ -62,18 +55,16 @@ impl MirLowerer {
     }
 }
 
-struct FunctionBuilder<'a> {
-    variants: &'a HashSet<String>,
+struct FunctionBuilder {
     symbol_locals: HashMap<SymbolId, LocalId>,
     locals: Vec<MirLocal>,
     blocks: Vec<BasicBlock>,
     current: BlockId,
 }
 
-impl<'a> FunctionBuilder<'a> {
-    fn new(variants: &'a HashSet<String>) -> Self {
+impl FunctionBuilder {
+    fn new() -> Self {
         Self {
-            variants,
             symbol_locals: HashMap::new(),
             locals: Vec::new(),
             blocks: Vec::new(),
@@ -216,14 +207,17 @@ impl<'a> FunctionBuilder<'a> {
                     .get(symbol)
                     .expect("HIR local is mapped before use"),
             ),
-            HirExprKind::Global(name) if self.variants.contains(name) => self.temp_rvalue(
+            HirExprKind::Global {
+                name,
+                kind: HirGlobalKind::Variant,
+            } => self.temp_rvalue(
                 expr.ty.clone(),
                 Rvalue::Enum {
                     variant: name.clone(),
                     args: Vec::new(),
                 },
             ),
-            HirExprKind::Global(name) => {
+            HirExprKind::Global { name, .. } => {
                 self.temp_rvalue(expr.ty.clone(), Rvalue::Function(name.clone()))
             }
             HirExprKind::Unary { op, expr: inner } => {
@@ -252,17 +246,19 @@ impl<'a> FunctionBuilder<'a> {
                 Operand::Local(target)
             }
             HirExprKind::Call { callee, args } => {
-                if let HirExprKind::Global(name) = &callee.kind {
-                    if self.variants.contains(name) {
-                        let args = args.iter().map(|arg| self.lower_expr(arg)).collect();
-                        return self.temp_rvalue(
-                            expr.ty.clone(),
-                            Rvalue::Enum {
-                                variant: name.clone(),
-                                args,
-                            },
-                        );
-                    }
+                if let HirExprKind::Global {
+                    name,
+                    kind: HirGlobalKind::Variant,
+                } = &callee.kind
+                {
+                    let args = args.iter().map(|arg| self.lower_expr(arg)).collect();
+                    return self.temp_rvalue(
+                        expr.ty.clone(),
+                        Rvalue::Enum {
+                            variant: name.clone(),
+                            args,
+                        },
+                    );
                 }
                 let callee = self.lower_expr(callee);
                 let args = args.iter().map(|arg| self.lower_expr(arg)).collect();

@@ -2,7 +2,7 @@ use std::path::Path;
 
 use crate::{
     Diagnostic, HirLowerer, HirModule, Interpreter, Lexer, MirLowerer, MirModule, Module,
-    ModuleLoader, Parser, RuntimeError, SourceFile, TypeChecker, Value,
+    ModuleLoader, Parser, RuntimeError, SemanticModel, SourceFile, TypeChecker, Value,
 };
 
 #[derive(Debug, Default)]
@@ -32,13 +32,13 @@ impl Compiler {
     }
 
     pub fn lower_source(&self, name: &str, source: &str) -> Result<HirModule, Vec<Diagnostic>> {
-        let module = self.checked_module(name, source)?;
-        Ok(HirLowerer::lower(&module))
+        let checked = self.checked_module(name, source)?;
+        Ok(HirLowerer::lower(&checked.module, &checked.semantic))
     }
 
     pub fn lower_path(&self, path: &Path) -> Result<HirModule, Vec<Diagnostic>> {
-        let module = self.checked_path_module(path)?;
-        Ok(HirLowerer::lower(&module))
+        let checked = self.checked_path_module(path)?;
+        Ok(HirLowerer::lower(&checked.module, &checked.semantic))
     }
 
     pub fn lower_mir_source(&self, name: &str, source: &str) -> Result<MirModule, Vec<Diagnostic>> {
@@ -72,7 +72,7 @@ impl Compiler {
         })
     }
 
-    fn checked_module(&self, name: &str, source: &str) -> Result<Module, Vec<Diagnostic>> {
+    fn checked_module(&self, name: &str, source: &str) -> Result<CheckedModule, Vec<Diagnostic>> {
         let source_file = SourceFile::new(name, source);
         let lexed = Lexer::new(&source_file).lex();
         let mut diagnostics = lexed.diagnostics;
@@ -81,26 +81,38 @@ impl Compiler {
         diagnostics.extend(parsed.diagnostics);
         let module = parsed.module.unwrap_or(Module { items: Vec::new() });
 
-        if diagnostics.is_empty() {
-            diagnostics.extend(TypeChecker::check_module(&module).diagnostics);
+        if !diagnostics.is_empty() {
+            return Err(diagnostics);
         }
 
-        if diagnostics.is_empty() {
-            Ok(module)
+        let checked = TypeChecker::check_module(&module);
+        if checked.diagnostics.is_empty() {
+            Ok(CheckedModule {
+                module,
+                semantic: checked.semantic,
+            })
         } else {
-            Err(diagnostics)
+            Err(checked.diagnostics)
         }
     }
 
-    fn checked_path_module(&self, path: &Path) -> Result<Module, Vec<Diagnostic>> {
+    fn checked_path_module(&self, path: &Path) -> Result<CheckedModule, Vec<Diagnostic>> {
         let module = ModuleLoader::load(path)?;
-        let diagnostics = TypeChecker::check_module(&module).diagnostics;
-        if diagnostics.is_empty() {
-            Ok(module)
+        let checked = TypeChecker::check_module(&module);
+        if checked.diagnostics.is_empty() {
+            Ok(CheckedModule {
+                module,
+                semantic: checked.semantic,
+            })
         } else {
-            Err(diagnostics)
+            Err(checked.diagnostics)
         }
     }
+}
+
+struct CheckedModule {
+    module: Module,
+    semantic: SemanticModel,
 }
 
 #[derive(Debug, Default)]

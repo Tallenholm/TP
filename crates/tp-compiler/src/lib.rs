@@ -12,6 +12,7 @@ mod module_loader;
 #[allow(clippy::while_let_loop)]
 mod parser;
 mod pipeline;
+mod semantic;
 mod source;
 mod symbol;
 mod token;
@@ -25,8 +26,8 @@ pub use ast::{
 };
 pub use diagnostic::{Diagnostic, Label, Severity, render_diagnostic};
 pub use hir::{
-    HirBlock, HirExpr, HirExprKind, HirFunction, HirMatchArm, HirModule, HirParam, HirPattern,
-    HirPatternKind, HirStmt,
+    HirBlock, HirExpr, HirExprKind, HirFunction, HirGlobalKind, HirMatchArm, HirModule, HirParam,
+    HirPattern, HirPatternKind, HirStmt,
 };
 pub use interpreter::{Interpreter, RuntimeError};
 pub use lexer::{LexResult, Lexer};
@@ -39,6 +40,7 @@ pub use mir::{
 pub use module_loader::ModuleLoader;
 pub use parser::{ParseResult, Parser};
 pub use pipeline::{CompileReport, Compiler, RunFailure, RunReport};
+pub use semantic::SemanticModel;
 pub use source::{LineCol, SourceFile, SourceId, Span};
 pub use symbol::{Binding, Scopes, SymbolId};
 pub use token::{Token, TokenKind};

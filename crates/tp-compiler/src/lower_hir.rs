@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     BinaryOp, Block, EnumDecl, Expr, ExprKind, FnDecl, HirBlock, HirExpr, HirExprKind, HirFunction,
     HirMatchArm, HirModule, HirParam, HirPattern, HirPatternKind, HirStmt, Item, Module, Pattern,
-    PatternKind, Scopes, Span, Stmt, SymbolId, Type, TypeRef, UnaryOp,
+    PatternKind, Scopes, SemanticModel, Span, Stmt, SymbolId, Type, TypeRef, UnaryOp,
 };
 
 #[derive(Debug, Clone)]
@@ -31,7 +31,8 @@ struct EnumInfo {
     variants: HashMap<String, VariantInfo>,
 }
 
-pub struct HirLowerer {
+pub struct HirLowerer<'a> {
+    semantic: &'a SemanticModel,
     functions: HashMap<String, FunctionSig>,
     structs: HashMap<String, StructInfo>,
     enums: HashMap<String, EnumInfo>,
@@ -39,9 +40,10 @@ pub struct HirLowerer {
     scopes: Scopes,
 }
 
-impl HirLowerer {
-    pub fn lower(module: &Module) -> HirModule {
+impl<'a> HirLowerer<'a> {
+    pub fn lower(module: &Module, semantic: &'a SemanticModel) -> HirModule {
         let mut lowerer = Self {
+            semantic,
             functions: HashMap::new(),
             structs: HashMap::new(),
             enums: HashMap::new(),
@@ -276,7 +278,18 @@ impl HirLowerer {
                 } else {
                     Type::Unknown
                 };
-                self.hir(expr.span, ty, HirExprKind::Global(name.clone()))
+                let kind = self
+                    .semantic
+                    .global(expr.span)
+                    .expect("checked global resolution exists");
+                self.hir(
+                    expr.span,
+                    ty,
+                    HirExprKind::Global {
+                        name: name.clone(),
+                        kind,
+                    },
+                )
             }
             ExprKind::Unary { op, expr: inner } => {
                 let inner = self.lower_expr(inner);
