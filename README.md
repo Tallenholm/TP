@@ -509,3 +509,6 @@ A green build is necessary, but **CI alone never proves a gate is complete**.
 ## Project name
 
 `TP` is the project codename. The final public language name is intentionally deferred until the language has earned a more permanent identity through implementation evidence.
+
+
+Known M1 limitations: [`docs/M1_KNOWN_LIMITATIONS.md`](docs/M1_KNOWN_LIMITATIONS.md).

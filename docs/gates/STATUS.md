@@ -7,7 +7,7 @@ Last updated: 2026-11-07
 | Gate | Name | State | Notes |
 |---|---|---|---|
 | 0 | Governance, Repository Control, and IP | PASSED | Governance/IP/repository policy complete. Owner-managed `main` without mandatory server-side branch protection is explicitly accepted in ADR-0002. |
-| 1 | M1 Adversarial Stabilization | ACTIVE | All known Critical/Major findings are resolved. Remaining work is stress/conformance evidence, documentation audit, branch reconciliation/final adversarial review, and fresh final locked CI. |
+| 1 | M1 Adversarial Stabilization | VERIFYING | Final adversarial review/repairs, stress evidence, documentation audit, branch reconciliation, and reproducibility work are complete. Awaiting fresh final locked CI and explicit owner authorization. |
 | 2 | M1 Semantic Freeze | LOCKED | Depends on Gate 1 PASSED. |
 | 3 | Compiler Architecture Foundation | LOCKED | Depends on Gate 2 PASSED. |
 | 4 | Ownership and Memory Model | LOCKED | Depends on Gate 3 PASSED. |
@@ -30,7 +30,7 @@ Last updated: 2026-11-07
 
 ## Current allowed work
 
-Gate 0 is PASSED. Only Gate 1 implementation/review work is currently authorized; Gate 2 and later gates remain LOCKED.
+Gate 0 is PASSED. Gate 1 is VERIFYING. Only Gate 1 verification/evidence work is currently authorized; Gate 2 and later gates remain LOCKED.
 
 The repository intentionally remains public under `docs/decisions/ADR-0001-public-repository-for-ci.md` so TP can make aggressive use of public-repository GitHub-hosted CI while retaining proprietary licensing. Under `docs/decisions/ADR-0002-owner-managed-main.md`, server-side branch protection is optional defense in depth and is not a prerequisite for continuing.
 
@@ -56,15 +56,12 @@ If a task appears to belong to a locked gate, stop and update the controlling pl
 
 ## Remaining Gate 1 closure work
 
-All ten known Major findings in the Gate 1 adversarial ledger are currently **RESOLVED** with retained RED -> GREEN evidence. No Critical finding is currently open.
+All known Critical/Major findings in the Gate 1 adversarial ledger are currently **RESOLVED** with retained evidence. Final review Minors are resolved or explicitly documented as non-blocking M1 limitations.
 
 Gate 1 remains ACTIVE because the proof/closure work is not yet complete:
 
-1. record deterministic stress/recovery evidence appropriate to Gate 1;
-2. finish the M1 documentation audit so README/spec-facing claims match implemented behavior;
-3. reconcile the active branch with the current `main` governance/docs state;
-4. perform a fresh whole-branch adversarial architecture/correctness review;
-5. run the complete final verification on pinned Rust 1.85.0 with locked dependencies;
-6. record final CI/evidence in the Gate 1 report.
+1. run the complete final verification on the current head using pinned Rust 1.85.0 and locked dependencies;
+2. record the final CI result in the Gate 1 evidence;
+3. obtain explicit owner authorization before Gate 1 may become PASSED / Gate 2 ACTIVE.
 
 Gate 2 remains LOCKED until Gate 1 is formally PASS and the owner explicitly authorizes Gate 2.
