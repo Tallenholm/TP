@@ -477,9 +477,7 @@ impl TypeChecker {
                 let condition_ty = self.check_expr(condition);
                 self.require_bool(condition.span, &condition_ty, "if condition");
                 let then_ty = self.check_block(then_branch);
-                let else_ty = else_branch
-                    .as_ref()
-                    .map(|branch| self.check_block(branch));
+                let else_ty = else_branch.as_ref().map(|branch| self.check_block(branch));
                 if condition_ty.is_never() {
                     return Type::Never;
                 }
@@ -1261,4 +1259,3 @@ fn more_specific_type(left: Type, right: Type) -> Type {
         _ => left,
     }
 }
-
