@@ -976,7 +976,10 @@ impl TypeChecker {
 
     fn check_binary(&mut self, op: BinaryOp, span: Span, left: Type, right: Type) -> Type {
         use BinaryOp::*;
-        if left.is_never() || right.is_never() {
+        if left.is_never() {
+            return Type::Never;
+        }
+        if right.is_never() && !matches!(op, BinaryOp::And | BinaryOp::Or) {
             return Type::Never;
         }
         match op {

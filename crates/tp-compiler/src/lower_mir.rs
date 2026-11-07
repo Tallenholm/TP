@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use crate::{
-    BasicBlock, BlockId, Constant, HirBlock, HirExpr, HirExprKind, HirFunction, HirGlobalKind,
-    HirModule, HirPattern, HirPatternKind, HirStmt, LocalId, MirFunction, MirLocal, MirModule,
-    MirPattern, MirStatement, Operand, Rvalue, SymbolId, Terminator, Type,
+    BasicBlock, BinaryOp, BlockId, Constant, HirBlock, HirExpr, HirExprKind, HirFunction,
+    HirGlobalKind, HirModule, HirPattern, HirPatternKind, HirStmt, LocalId, MirFunction, MirLocal,
+    MirModule, MirPattern, MirStatement, Operand, Rvalue, SymbolId, Terminator, Type,
 };
 
 pub struct MirLowerer;
@@ -224,6 +224,14 @@ impl FunctionBuilder {
                 let operand = self.lower_expr(inner);
                 self.temp_rvalue(expr.ty.clone(), Rvalue::Unary { op: *op, operand })
             }
+            HirExprKind::Binary {
+                op: BinaryOp::And | BinaryOp::Or,
+                left,
+                right,
+            } => self.lower_logical(expr, left, right, match &expr.kind {
+                HirExprKind::Binary { op, .. } => *op,
+                _ => unreachable!(),
+            }),
             HirExprKind::Binary { op, left, right } => {
                 let left = self.lower_expr(left);
                 let right = self.lower_expr(right);
@@ -294,6 +302,49 @@ impl FunctionBuilder {
             }
             HirExprKind::Match { value, arms } => self.lower_match(expr, value, arms),
         }
+    }
+
+    fn lower_logical(
+        &mut self,
+        expr: &HirExpr,
+        left: &HirExpr,
+        right: &HirExpr,
+        op: BinaryOp,
+    ) -> Operand {
+        let left = self.lower_expr(left);
+        let rhs_block = self.new_block();
+        let short_block = self.new_block();
+        let join = self.new_block();
+        let result = self.new_temp(expr.ty.clone());
+
+        let (then_block, else_block, short_value) = match op {
+            BinaryOp::And => (rhs_block, short_block, false),
+            BinaryOp::Or => (short_block, rhs_block, true),
+            _ => unreachable!("only logical operators use short-circuit lowering"),
+        };
+
+        self.set_terminator(Terminator::Branch {
+            condition: left,
+            then_block,
+            else_block,
+        });
+
+        self.switch_to(short_block);
+        self.assign_rvalue(
+            result,
+            Rvalue::Use(Operand::Constant(Constant::Bool(short_value))),
+        );
+        self.set_terminator(Terminator::Goto(join));
+
+        self.switch_to(rhs_block);
+        let right = self.lower_expr(right);
+        if self.current_is_open() {
+            self.assign_rvalue(result, Rvalue::Use(right));
+            self.set_terminator(Terminator::Goto(join));
+        }
+
+        self.switch_to(join);
+        Operand::Local(result)
     }
 
     fn lower_if(
