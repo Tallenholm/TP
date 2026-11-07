@@ -116,10 +116,9 @@ fn oversized_integer_literal_reports_range_error() {
 fn oversized_integer_pattern_reports_range_error() {
     let result = parse("fn main(x: i64) -> i64 { match x { 9223372036854775808 => 1, _ => 0 } }");
     assert!(
-        result
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.message.contains("integer literal out of range for i64")),
+        result.diagnostics.iter().any(|diagnostic| diagnostic
+            .message
+            .contains("integer literal out of range for i64")),
         "{:#?}",
         result.diagnostics
     );
