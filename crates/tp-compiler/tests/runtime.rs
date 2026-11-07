@@ -128,3 +128,32 @@ fn exact_i64_min_literal_executes() {
         .expect("i64::MIN must be representable");
     assert_eq!(report.value.as_i64(), Some(i64::MIN));
 }
+
+#[test]
+fn floating_point_arithmetic_may_produce_ieee_non_finite_values() {
+    let huge = format!("{}.0", "9".repeat(200));
+
+    let infinity = Compiler::new()
+        .run_source(
+            "main.tp",
+            &format!("fn main() -> f64 {{ let x = {huge}; x * x }}"),
+        )
+        .expect("finite operands may overflow to IEEE infinity");
+    let Value::F64(infinity) = infinity.value else {
+        panic!("expected f64 result");
+    };
+    assert!(infinity.is_infinite() && infinity.is_sign_positive());
+
+    let nan = Compiler::new()
+        .run_source(
+            "main.tp",
+            &format!(
+                "fn main() -> f64 {{ let x = {huge}; let infinity = x * x; infinity - infinity }}"
+            ),
+        )
+        .expect("IEEE infinity arithmetic may produce NaN");
+    let Value::F64(nan) = nan.value else {
+        panic!("expected f64 result");
+    };
+    assert!(nan.is_nan());
+}

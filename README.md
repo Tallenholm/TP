@@ -173,6 +173,8 @@ fn main() -> i64 {
 
 Function parameters and declared return types are statically checked. Local bindings may infer their type.
 
+A function's unterminated tail expression must match its declared result type. A function with no explicit return type defaults to `Unit`; use a semicolon when a non-`Unit` expression is intentionally evaluated and discarded.
+
 ### Immutable by default
 
 ```tp
@@ -258,6 +260,8 @@ fn unwrap_or_zero(value: Option<i64>) -> i64 {
 
 The current type checker validates nominal type declarations and exact generic arity. Generic `Option<T>` / `Result<T, E>`-style types are ordinary enum declarations rather than compiler-only runtime magic.
 
+Optional syntax `T?` is accepted only when an arity-1 `Option<T>` nominal type has actually been declared; the compiler does not synthesize `Option`.
+
 ### Pattern matching
 
 M1 currently supports wildcard, binding, literal, and enum-variant patterns.
@@ -328,6 +332,10 @@ Current stable families used by M1:
 | `TP-E0500` | runtime trap |
 
 The diagnostic system is intended to become a shared public interface for terminal users, editors, CI systems, and AI agents.
+
+### Numeric boundary semantics
+
+M1 uses checked `i64` arithmetic and finite `f64` literals. Floating-point arithmetic otherwise follows IEEE-754 binary64 behavior and may produce Infinity/NaN, while division or remainder by ±0.0 traps. See [`docs/M1_NUMERIC_SEMANTICS.md`](docs/M1_NUMERIC_SEMANTICS.md).
 
 ---
 
