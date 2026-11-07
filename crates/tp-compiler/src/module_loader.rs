@@ -117,12 +117,9 @@ fn load_recursive(
 
             stack.pop();
             return Err(vec![
-                Diagnostic::error(
-                    "TP-E0200",
-                    format!("duplicate import alias `{alias}`"),
-                )
-                .with_primary(import.span)
-                .with_label(*previous_span, "alias was first bound here"),
+                Diagnostic::error("TP-E0200", format!("duplicate import alias `{alias}`"))
+                    .with_primary(import.span)
+                    .with_label(*previous_span, "alias was first bound here"),
             ]);
         }
         alias_bindings.insert(alias.to_owned(), (import.module.clone(), import.span));
