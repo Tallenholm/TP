@@ -235,11 +235,8 @@ impl TypeChecker {
 
             if function.name == "main" && !function.params.is_empty() {
                 self.diagnostics.push(
-                    Diagnostic::error(
-                        "TP-E0400",
-                        "entry point `main` must not take parameters",
-                    )
-                    .with_primary(function.span),
+                    Diagnostic::error("TP-E0400", "entry point `main` must not take parameters")
+                        .with_primary(function.span),
                 );
             }
 

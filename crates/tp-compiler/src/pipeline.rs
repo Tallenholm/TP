@@ -64,7 +64,11 @@ impl Compiler {
     }
 
     fn run_mir(&self, mir: &MirModule) -> Result<RunReport, RunFailure> {
-        let Some(main) = mir.functions.iter().find(|function| function.name == "main") else {
+        let Some(main) = mir
+            .functions
+            .iter()
+            .find(|function| function.name == "main")
+        else {
             return Err(RunFailure::Compile(vec![Diagnostic::error(
                 "TP-E0400",
                 "missing executable entry point `main`",
