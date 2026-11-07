@@ -404,3 +404,54 @@ fn refutable_enum_payload_pattern_does_not_cover_whole_variant() {
         report.diagnostics
     );
 }
+
+#[test]
+fn unit_function_rejects_unterminated_value_tail() {
+    let report = check("fn f() { 42 }");
+    assert!(
+        report.diagnostics.iter().any(|diagnostic| diagnostic
+            .message
+            .contains("function body has the wrong result type")),
+        "{:#?}",
+        report.diagnostics
+    );
+}
+
+#[test]
+fn unit_function_allows_terminated_value_expression() {
+    let report = check("fn f() { 42; }");
+    assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
+}
+
+#[test]
+fn optional_sugar_requires_declared_option_type() {
+    let report = check("fn f(value: i64?) { }");
+    assert!(
+        report.diagnostics.iter().any(|diagnostic| diagnostic
+            .message
+            .contains("optional type syntax requires declared `Option<T>`")),
+        "{:#?}",
+        report.diagnostics
+    );
+}
+
+#[test]
+fn optional_sugar_uses_declared_option_type() {
+    let report = check("enum Option<T> { Some(T), None } fn f(value: i64?) { }");
+    assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
+}
+
+#[test]
+fn duplicate_refutable_variant_pattern_is_unreachable() {
+    let report = check(
+        "enum Option<T> { Some(T), None } fn f(value: Option<i64>) -> i64 { match value { Some(1) => 1, Some(1) => 2, Some(_) => 3, None => 0 } }",
+    );
+    assert!(
+        report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("unreachable match arm")),
+        "{:#?}",
+        report.diagnostics
+    );
+}
