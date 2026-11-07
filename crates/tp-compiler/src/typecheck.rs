@@ -13,6 +13,12 @@ struct FunctionSig {
 }
 
 #[derive(Debug, Clone)]
+struct TypeDeclInfo {
+    arity: usize,
+    span: Span,
+}
+
+#[derive(Debug, Clone)]
 struct StructInfo {
     type_params: Vec<String>,
     fields: HashMap<String, (Type, Span)>,
@@ -43,6 +49,7 @@ pub struct TypeCheckResult {
 
 pub struct TypeChecker {
     functions: HashMap<String, FunctionSig>,
+    type_decls: HashMap<String, TypeDeclInfo>,
     structs: HashMap<String, StructInfo>,
     enums: HashMap<String, EnumInfo>,
     variants: HashMap<String, VariantInfo>,
@@ -56,6 +63,7 @@ impl TypeChecker {
     pub fn check_module(module: &Module) -> TypeCheckResult {
         let mut checker = Self {
             functions: HashMap::new(),
+            type_decls: HashMap::new(),
             structs: HashMap::new(),
             enums: HashMap::new(),
             variants: HashMap::new(),
@@ -64,6 +72,7 @@ impl TypeChecker {
             semantic: SemanticModel::default(),
             expected_return: Type::Unit,
         };
+        checker.collect_type_headers(module);
         checker.collect_types(module);
         checker.collect_functions(module);
         checker.check_functions(module);
@@ -73,37 +82,107 @@ impl TypeChecker {
         }
     }
 
+    fn collect_type_headers(&mut self, module: &Module) {
+        for item in &module.items {
+            let (name, type_params, span) = match item {
+                Item::Struct(decl) => (&decl.name, &decl.type_params, decl.span),
+                Item::Enum(decl) => (&decl.name, &decl.type_params, decl.span),
+                _ => continue,
+            };
+
+            if matches!(name.as_str(), "Unit" | "Bool" | "i64" | "f64" | "String") {
+                self.diagnostics.push(
+                    Diagnostic::error(
+                        "TP-E0200",
+                        format!("type name `{name}` is reserved"),
+                    )
+                    .with_primary(span),
+                );
+                continue;
+            }
+
+            let mut seen_params = HashSet::new();
+            for parameter in type_params {
+                if !seen_params.insert(parameter.clone()) {
+                    self.diagnostics.push(
+                        Diagnostic::error(
+                            "TP-E0200",
+                            format!("duplicate generic parameter `{parameter}`"),
+                        )
+                        .with_primary(span),
+                    );
+                }
+            }
+
+            let info = TypeDeclInfo {
+                arity: type_params.len(),
+                span,
+            };
+            if let Some(previous) = self.type_decls.get(name) {
+                self.diagnostics.push(
+                    Diagnostic::error(
+                        "TP-E0200",
+                        format!("duplicate type name `{name}`"),
+                    )
+                    .with_primary(span)
+                    .with_label(previous.span, "previous type declaration is here"),
+                );
+            } else {
+                self.type_decls.insert(name.clone(), info);
+            }
+        }
+    }
+
     fn collect_types(&mut self, module: &Module) {
         for item in &module.items {
             match item {
                 Item::Struct(decl) => {
-                    let fields = decl
-                        .fields
-                        .iter()
-                        .map(|field| {
-                            (
-                                field.name.clone(),
-                                (self.resolve_type_ref(&field.ty), field.span),
-                            )
-                        })
-                        .collect();
-                    let info = StructInfo {
-                        type_params: decl.type_params.clone(),
-                        fields,
-                        span: decl.span,
-                    };
-                    if let Some(previous) = self.structs.insert(decl.name.clone(), info) {
-                        self.diagnostics.push(
-                            Diagnostic::error(
-                                "TP-E0200",
-                                format!("duplicate struct `{}`", decl.name),
-                            )
-                            .with_primary(decl.span)
-                            .with_label(previous.span, "previous declaration is here"),
-                        );
+                    if self
+                        .type_decls
+                        .get(&decl.name)
+                        .is_none_or(|info| info.span != decl.span)
+                    {
+                        continue;
                     }
+
+                    let type_params: HashSet<String> =
+                        decl.type_params.iter().cloned().collect();
+                    let mut fields = HashMap::new();
+                    for field in &decl.fields {
+                        let ty = self.resolve_type_ref_with_generics(&field.ty, &type_params);
+                        if let Some((_, previous_span)) =
+                            fields.insert(field.name.clone(), (ty, field.span))
+                        {
+                            self.diagnostics.push(
+                                Diagnostic::error(
+                                    "TP-E0200",
+                                    format!("duplicate struct field `{}`", field.name),
+                                )
+                                .with_primary(field.span)
+                                .with_label(previous_span, "previous field is here"),
+                            );
+                        }
+                    }
+                    self.structs.insert(
+                        decl.name.clone(),
+                        StructInfo {
+                            type_params: decl.type_params.clone(),
+                            fields,
+                            span: decl.span,
+                        },
+                    );
                 }
                 Item::Enum(decl) => {
+                    if self
+                        .type_decls
+                        .get(&decl.name)
+                        .is_none_or(|info| info.span != decl.span)
+                    {
+                        continue;
+                    }
+
+                    let type_params: HashSet<String> =
+                        decl.type_params.iter().cloned().collect();
                     let mut variants = HashMap::new();
                     for variant in &decl.variants {
                         let info = VariantInfo {
@@ -113,7 +192,9 @@ impl TypeChecker {
                             payload: variant
                                 .payload
                                 .iter()
-                                .map(|ty| self.resolve_type_ref(ty))
+                                .map(|ty| {
+                                    self.resolve_type_ref_with_generics(ty, &type_params)
+                                })
                                 .collect(),
                             span: variant.span,
                         };
@@ -142,21 +223,14 @@ impl TypeChecker {
                             );
                         }
                     }
-                    let info = EnumInfo {
-                        type_params: decl.type_params.clone(),
-                        variants,
-                        span: decl.span,
-                    };
-                    if let Some(previous) = self.enums.insert(decl.name.clone(), info) {
-                        self.diagnostics.push(
-                            Diagnostic::error(
-                                "TP-E0200",
-                                format!("duplicate enum `{}`", decl.name),
-                            )
-                            .with_primary(decl.span)
-                            .with_label(previous.span, "previous declaration is here"),
-                        );
-                    }
+                    self.enums.insert(
+                        decl.name.clone(),
+                        EnumInfo {
+                            type_params: decl.type_params.clone(),
+                            variants,
+                            span: decl.span,
+                        },
+                    );
                 }
                 _ => {}
             }
@@ -194,6 +268,20 @@ impl TypeChecker {
                 sig.params.clone(),
                 sig.result.clone(),
             );
+
+            if let Some(type_decl) = self.type_decls.get(&function.name) {
+                self.diagnostics.push(
+                    Diagnostic::error(
+                        "TP-E0200",
+                        format!(
+                            "function `{}` conflicts with type `{}`",
+                            function.name, function.name
+                        ),
+                    )
+                    .with_primary(function.span)
+                    .with_label(type_decl.span, "type is declared here"),
+                );
+            }
 
             if let Some(variant) = self.variants.get(&function.name) {
                 self.diagnostics.push(
@@ -1035,22 +1123,66 @@ impl TypeChecker {
         }
     }
 
-    fn resolve_type_ref(&self, type_ref: &TypeRef) -> Type {
+    fn resolve_type_ref(&mut self, type_ref: &TypeRef) -> Type {
+        self.resolve_type_ref_with_generics(type_ref, &HashSet::new())
+    }
+
+    fn resolve_type_ref_with_generics(
+        &mut self,
+        type_ref: &TypeRef,
+        generic_params: &HashSet<String>,
+    ) -> Type {
+        let args: Vec<Type> = type_ref
+            .args
+            .iter()
+            .map(|arg| self.resolve_type_ref_with_generics(arg, generic_params))
+            .collect();
+
         let base = match type_ref.name.as_str() {
-            "Unit" => Type::Unit,
-            "Bool" => Type::Bool,
-            "i64" => Type::I64,
-            "f64" => Type::F64,
-            "String" => Type::String,
-            other => Type::Named {
-                name: other.to_owned(),
-                args: type_ref
-                    .args
-                    .iter()
-                    .map(|arg| self.resolve_type_ref(arg))
-                    .collect(),
-            },
+            "Unit" | "Bool" | "i64" | "f64" | "String" => {
+                if !args.is_empty() {
+                    self.report_type_arity(type_ref, 0, args.len());
+                }
+                match type_ref.name.as_str() {
+                    "Unit" => Type::Unit,
+                    "Bool" => Type::Bool,
+                    "i64" => Type::I64,
+                    "f64" => Type::F64,
+                    "String" => Type::String,
+                    _ => unreachable!(),
+                }
+            }
+            name if generic_params.contains(name) => {
+                if !args.is_empty() {
+                    self.report_type_arity(type_ref, 0, args.len());
+                }
+                Type::Named {
+                    name: name.to_owned(),
+                    args: Vec::new(),
+                }
+            }
+            name => {
+                if let Some(info) = self.type_decls.get(name).cloned() {
+                    if args.len() != info.arity {
+                        self.report_type_arity(type_ref, info.arity, args.len());
+                    }
+                    Type::Named {
+                        name: name.to_owned(),
+                        args,
+                    }
+                } else {
+                    self.diagnostics.push(
+                        Diagnostic::error(
+                            "TP-E0200",
+                            format!("unknown type `{name}`"),
+                        )
+                        .with_primary(type_ref.span),
+                    );
+                    Type::Unknown
+                }
+            }
         };
+
         if type_ref.optional {
             Type::Named {
                 name: "Option".to_owned(),
@@ -1059,6 +1191,24 @@ impl TypeChecker {
         } else {
             base
         }
+    }
+
+    fn report_type_arity(&mut self, type_ref: &TypeRef, expected: usize, actual: usize) {
+        let noun = if expected == 1 {
+            "type argument"
+        } else {
+            "type arguments"
+        };
+        self.diagnostics.push(
+            Diagnostic::error(
+                "TP-E0200",
+                format!(
+                    "type `{}` expects {expected} {noun}, found {actual}",
+                    type_ref.name
+                ),
+            )
+            .with_primary(type_ref.span),
+        );
     }
 
     fn unify_branch_types(&mut self, span: Span, left: Type, right: Type, context: &str) -> Type {
