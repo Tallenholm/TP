@@ -241,8 +241,7 @@ impl TypeChecker {
                 .insert(param.name.clone(), ty.clone(), false, param.span)
             {
                 Ok(symbol) => {
-                    self.semantic
-                        .record_binding(param.span, symbol, ty.clone());
+                    self.semantic.record_binding(param.span, symbol, ty.clone());
                 }
                 Err(_) => {
                     self.diagnostics.push(
