@@ -177,6 +177,20 @@ impl TypeChecker {
                     .unwrap_or(Type::Unit),
                 span: function.span,
             };
+
+            if let Some(variant) = self.variants.get(&function.name) {
+                self.diagnostics.push(
+                    Diagnostic::error(
+                        "TP-E0200",
+                        format!(
+                            "function `{}` conflicts with enum variant `{}`",
+                            function.name, function.name
+                        ),
+                    )
+                    .with_primary(function.span)
+                    .with_label(variant.span, "enum variant is declared here"),
+                );
+            }
             if let Some(previous) = self.functions.insert(function.name.clone(), sig) {
                 self.diagnostics.push(
                     Diagnostic::error(
