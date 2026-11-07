@@ -130,5 +130,8 @@ pub enum HirPatternKind {
     Integer(i64),
     Bool(bool),
     String(String),
-    Variant { name: String, args: Vec<HirPattern> },
+    Variant {
+        name: String,
+        args: Vec<HirPattern>,
+    },
 }
