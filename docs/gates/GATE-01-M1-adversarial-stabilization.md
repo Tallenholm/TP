@@ -14,7 +14,7 @@
 | ID | Requirement | Status | Evidence / blocker |
 |---|---|---|---|
 | G1-R01 | Complete adversarial review of all M1 subsystems | PASS | Full source/lexer/parser/AST/symbol/type/HIR/MIR/interpreter/module/pipeline/CLI/tests/docs/CI review completed 2026-11-07; findings retained below. |
-| G1-R02 | Correct path-sensitive return/control-flow validation | FAIL | Known unsound `contains_explicit_return` behavior. |
+| G1-R02 | Correct path-sensitive return/control-flow validation | PASS | Old `contains_explicit_return` heuristic removed; internal `Never`/divergence typing now distinguishes total return paths from fallthrough. RED CI 42355699407; GREEN CI 42355992729 with nested/loop/unreachable/runtime boundaries. |
 | G1-R03 | Correct short-circuit semantics for `&&` and `||` | FAIL | MIR currently lowers both operands eagerly. |
 | G1-R04 | Validate declared types and generic arity/parameters | FAIL | Additional validation required. |
 | G1-R05 | Harden declaration/import/alias collision rules | FAIL | Adversarial matrix incomplete. |
@@ -34,7 +34,7 @@ Every finding must remain here until resolved. Do not delete findings after fixe
 
 | ID | Severity | Subsystem | Finding | Reproducer / evidence | Required resolution | Status |
 |---|---|---|---|---|---|---|
-| M1-001 | Major | Type/control flow | Function validation treats the existence of any explicit return as sufficient to suppress tail-result checking, allowing missing-return paths. | `fn broken(x: Bool) -> i64 { if x { return 1; } }` | Replace heuristic with path/control-flow analysis; RED -> GREEN regression suite. | OPEN |
+| M1-001 | Major | Type/control flow | Function validation previously treated the existence of any explicit return as sufficient and represented returning branches as `Unit`, causing both unsound acceptance and false branch-type rejection. | `missing_return_path_is_rejected`; `returning_branch_unifies_with_tail_branch`; nested/while/unreachable/runtime boundaries. | Removed heuristic; internal `Never` models diverging control flow and propagates through expression typing; block fallthrough is path-sensitive. | RESOLVED |
 | M1-002 | Major | MIR/runtime semantics | `&&` / `||` are lowered as ordinary eager binary expressions, so RHS side effects/traps occur when they should be skipped. | `false && dangerous()`; `true || dangerous()` | Lower through branches/join blocks and add side-effect/trap regressions. | OPEN |
 | M1-003 | Major | Type system | Unknown type names are materialized as named types without proving declarations exist; generic arity/parameter validation requires hardening. | Undeclared type signatures/generic edge cases. | Central type-name resolution and generic-arity diagnostics with tests. | OPEN |
 | M1-004 | Major | Diagnostics | CLI output discards source locations/labels/help; multi-file source retention is insufficient. The renderer itself ignores secondary labels and uses byte length for caret width, producing incorrect Unicode/multi-line highlighting. | Compare `render_diagnostic` with CLI emission; inspect secondary-label and Unicode spans. | SourceManager/end-to-end source-aware human + JSON diagnostics, including correct label/span rendering. | OPEN |
@@ -53,7 +53,7 @@ No repair is complete until its test has been observed failing for the intended 
 
 | Finding | Regression test(s) | RED | GREEN | Fix commit |
 |---|---|---|---|---|
-| M1-001 | pending | NOT RECORDED | NOT RECORDED | — |
+| M1-001 | `missing_return_path_is_rejected`; `returning_branch_unifies_with_tail_branch`; `all_if_branches_may_return_explicitly`; nested/while/unreachable/runtime boundaries | CI 42355699407: missing-return test was accepted with `diagnostics: []`; mixed return/tail test was rejected as `Unit` vs `i64` | CI 42355902092 green for core regressions; CI 42355992729 green for expanded type/runtime boundary matrix | `d0b45f281d0a1ea228b435c457a4e9066e4d6c2d` + integration fixes through `2dc0a9b9811e5d432e481170cdf1a9ed1fe3bf9c`; boundary tests `45b0ba7166a215659067bba9b708e2ce86c0f530` |
 | M1-002 | pending | NOT RECORDED | NOT RECORDED | — |
 | M1-003 | pending | NOT RECORDED | NOT RECORDED | — |
 | M1-004 | pending | NOT RECORDED | NOT RECORDED | — |
@@ -83,7 +83,7 @@ The 2026-11-07 review explicitly inspected:
 - Rust manifests, lockfile policy, toolchain file, and CI workflow;
 - README capability claims.
 
-No Critical finding was identified in this pass. Major findings M1-001 through M1-004 and M1-006 through M1-009 remain OPEN; M1-005 and M1-010 are RESOLVED with RED -> GREEN evidence. A fresh whole-branch adversarial review remains mandatory after all repairs.
+No Critical finding was identified in this pass. Major findings M1-002 through M1-004 and M1-006 through M1-009 remain OPEN; M1-001, M1-005, and M1-010 are RESOLVED with RED -> GREEN evidence. A fresh whole-branch adversarial review remains mandatory after all repairs.
 
 ## 3.2 Execution rulings
 
@@ -133,8 +133,8 @@ None identified yet. Initial full M1 review completed 2026-11-07. Final whole-br
 
 ### Major
 
-OPEN: M1-001, M1-002, M1-003, M1-004, M1-006, M1-007, M1-008, M1-009.  
-RESOLVED with retained RED -> GREEN evidence: M1-005, M1-010.
+OPEN: M1-002, M1-003, M1-004, M1-006, M1-007, M1-008, M1-009.  
+RESOLVED with retained RED -> GREEN evidence: M1-001, M1-005, M1-010.
 
 ### Minor
 
