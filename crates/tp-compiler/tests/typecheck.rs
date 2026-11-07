@@ -261,3 +261,60 @@ fn nested_local_shadowing_is_allowed() {
     let report = check("fn main() { let x = 1; if true { let x = 2; x; } x; }");
     assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
 }
+
+#[test]
+fn forward_nominal_type_reference_is_allowed() {
+    let report = check("struct A { b: B } struct B { value: i64 }");
+    assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
+}
+
+#[test]
+fn generic_parameter_reference_is_allowed() {
+    let report = check("struct Box<T> { value: T }");
+    assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
+}
+
+#[test]
+fn primitive_type_generic_arguments_are_rejected() {
+    let report = check("fn bad(value: i64<String>) { }");
+    assert!(
+        report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("type `i64` expects 0")),
+        "{:#?}",
+        report.diagnostics
+    );
+}
+
+#[test]
+fn primitive_type_names_are_reserved() {
+    let report = check("struct i64 { value: String }");
+    assert!(
+        report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("type name `i64` is reserved")),
+        "{:#?}",
+        report.diagnostics
+    );
+}
+
+#[test]
+fn duplicate_binding_in_same_scope_is_rejected() {
+    let report = check("fn main() { let x = 1; let x = 2; }");
+    assert!(
+        report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("duplicate binding `x`")),
+        "{:#?}",
+        report.diagnostics
+    );
+}
+
+#[test]
+fn recursive_nominal_declaration_is_allowed_in_m1() {
+    let report = check("enum List<T> { Cons(T, List<T>), Nil }");
+    assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
+}
