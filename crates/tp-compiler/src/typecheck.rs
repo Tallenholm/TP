@@ -335,7 +335,7 @@ impl TypeChecker {
         }
 
         let body_ty = self.check_block(&function.body);
-        if sig.result != Type::Unit && !types_compatible(&sig.result, &body_ty) {
+        if !types_compatible(&sig.result, &body_ty) {
             self.type_mismatch(
                 function.body.span,
                 &sig.result,
@@ -698,6 +698,7 @@ impl TypeChecker {
         let mut covered_integers = HashSet::new();
         let mut covered_strings = HashSet::new();
         let mut catch_all = false;
+        let mut seen_patterns: Vec<Pattern> = Vec::new();
         let mut result: Option<Type> = None;
 
         for arm in arms {
@@ -710,8 +711,11 @@ impl TypeChecker {
             );
 
             self.scopes.push();
+            let exact_duplicate = seen_patterns
+                .iter()
+                .any(|previous| patterns_equivalent(previous, &arm.pattern));
             let coverage = self.check_pattern(&arm.pattern, &value_ty);
-            let duplicate = match &coverage {
+            let duplicate = exact_duplicate || match &coverage {
                 PatternCoverage::Variant {
                     name,
                     irrefutable: true,
@@ -731,6 +735,7 @@ impl TypeChecker {
                     Diagnostic::error("TP-E0300", "unreachable match arm").with_primary(arm.span),
                 );
             } else {
+                seen_patterns.push(arm.pattern.clone());
                 match coverage {
                     PatternCoverage::Variant {
                         name,
@@ -1260,9 +1265,24 @@ impl TypeChecker {
         };
 
         if type_ref.optional {
-            Type::Named {
-                name: "Option".to_owned(),
-                args: vec![base],
+            let option_is_declared = self
+                .type_decls
+                .get("Option")
+                .is_some_and(|info| info.arity == 1);
+            if !option_is_declared {
+                self.diagnostics.push(
+                    Diagnostic::error(
+                        "TP-E0200",
+                        "optional type syntax requires declared `Option<T>`",
+                    )
+                    .with_primary(type_ref.span),
+                );
+                Type::Unknown
+            } else {
+                Type::Named {
+                    name: "Option".to_owned(),
+                    args: vec![base],
+                }
             }
         } else {
             base
@@ -1441,6 +1461,34 @@ fn substitute_type(template: &Type, substitution: &HashMap<String, Type>) -> Typ
             result: Box::new(substitute_type(result, substitution)),
         },
         other => other.clone(),
+    }
+}
+
+fn patterns_equivalent(left: &Pattern, right: &Pattern) -> bool {
+    match (&left.kind, &right.kind) {
+        (PatternKind::Wildcard, PatternKind::Wildcard) => true,
+        (PatternKind::Name(left), PatternKind::Name(right)) => left == right,
+        (PatternKind::Integer(left), PatternKind::Integer(right)) => left == right,
+        (PatternKind::Bool(left), PatternKind::Bool(right)) => left == right,
+        (PatternKind::String(left), PatternKind::String(right)) => left == right,
+        (
+            PatternKind::Variant {
+                name: left_name,
+                args: left_args,
+            },
+            PatternKind::Variant {
+                name: right_name,
+                args: right_args,
+            },
+        ) => {
+            left_name == right_name
+                && left_args.len() == right_args.len()
+                && left_args
+                    .iter()
+                    .zip(right_args)
+                    .all(|(left, right)| patterns_equivalent(left, right))
+        }
+        _ => false,
     }
 }
 
