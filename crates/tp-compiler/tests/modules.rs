@@ -94,10 +94,9 @@ fn same_module_can_have_multiple_aliases_without_reloading() {
 fn duplicate_import_alias_is_rejected_at_import_boundary() {
     let report = Compiler::new().check_path(&fixture("modules_duplicate_alias_main.tp"));
     assert!(
-        report
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.message.contains("duplicate import alias `helper`")),
+        report.diagnostics.iter().any(|diagnostic| diagnostic
+            .message
+            .contains("duplicate import alias `helper`")),
         "{:#?}",
         report.diagnostics
     );
