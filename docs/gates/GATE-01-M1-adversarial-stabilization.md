@@ -16,8 +16,8 @@
 | G1-R01 | Complete adversarial review of all M1 subsystems | PASS | Full source/lexer/parser/AST/symbol/type/HIR/MIR/interpreter/module/pipeline/CLI/tests/docs/CI review completed 2026-11-07; findings retained below. |
 | G1-R02 | Correct path-sensitive return/control-flow validation | PASS | Old `contains_explicit_return` heuristic removed; internal `Never`/divergence typing now distinguishes total return paths from fallthrough. RED CI 42355699407; GREEN CI 42355992729 with nested/loop/unreachable/runtime boundaries. |
 | G1-R03 | Correct short-circuit semantics for `&&` and `||` | PASS | Logical operators now lower to MIR branch/RHS/join control flow. RED CI 42356104422 showed eager `Rvalue::Binary::And`; GREEN CI 42356235494 and 42356279096 prove skip/evaluate behavior for both operators. |
-| G1-R04 | Validate declared types and generic arity/parameters | FAIL | Additional validation required. |
-| G1-R05 | Harden declaration/import/alias collision rules | FAIL | Adversarial matrix incomplete. |
+| G1-R04 | Validate declared types and generic arity/parameters | PASS | Two-pass nominal type collection now validates declaration existence, exact arity, generic parameters, primitive arity/reserved names, forward refs, and recursive nominal declarations. RED CI 42356411195; GREEN CI 42356689441. |
+| G1-R05 | Harden declaration/import/alias collision rules | FAIL | Core declaration/scoping policy is now tested (type/function/value collisions, duplicate fields/generics/same-scope bindings, nested shadowing); import/alias collisions remain under M1-006. |
 | G1-R06 | Define/test literal range, float, string, Unicode behavior | FAIL | Boundary policy/tests incomplete. |
 | G1-R07 | Statically validate executable `main` contract | FAIL | Entry-point contract not fully enforced before runtime. |
 | G1-R08 | Source-aware human and rich versioned JSON diagnostics | FAIL | CLI currently discards portions of structured source rendering/context. |
@@ -36,7 +36,7 @@ Every finding must remain here until resolved. Do not delete findings after fixe
 |---|---|---|---|---|---|---|
 | M1-001 | Major | Type/control flow | Function validation previously treated the existence of any explicit return as sufficient and represented returning branches as `Unit`, causing both unsound acceptance and false branch-type rejection. | `missing_return_path_is_rejected`; `returning_branch_unifies_with_tail_branch`; nested/while/unreachable/runtime boundaries. | Removed heuristic; internal `Never` models diverging control flow and propagates through expression typing; block fallthrough is path-sensitive. | RESOLVED |
 | M1-002 | Major | MIR/runtime semantics | `&&` / `||` were lowered as ordinary eager binary expressions, so RHS traps occurred when they should have been skipped. | MIR shape test plus runtime trap-skipping/evaluation tests for all four truth-table evaluation cases. | Logical operators now lower through branch/RHS/short-path/join blocks; RHS executes only on the required branch. | RESOLVED |
-| M1-003 | Major | Type system | Unknown type names are materialized as named types without proving declarations exist; generic arity/parameter validation requires hardening. | Undeclared type signatures/generic edge cases. | Central type-name resolution and generic-arity diagnostics with tests. | OPEN |
+| M1-003 | Major | Type system | Unknown type names were materialized as nominal types without declaration proof; generic arity/parameter validation and several declaration collisions were missing. | RED matrix: unknown declared type, Option too few/many args, duplicate generic params, duplicate struct fields, struct/enum shared type-name collision, function/type collision. | Two-pass type-header/body collection validates known names/arity while preserving forward/recursive references; declaration/scoping boundary matrix added. | RESOLVED |
 | M1-004 | Major | Diagnostics | CLI output discards source locations/labels/help; multi-file source retention is insufficient. The renderer itself ignores secondary labels and uses byte length for caret width, producing incorrect Unicode/multi-line highlighting. | Compare `render_diagnostic` with CLI emission; inspect secondary-label and Unicode spans. | SourceManager/end-to-end source-aware human + JSON diagnostics, including correct label/span rendering. | OPEN |
 | M1-005 | Major | Architecture | Type/semantic knowledge was independently reconstructed in TypeChecker and HIR lowering, and pattern-binding types were lost before MIR. | `match_binding_local_keeps_checked_payload_type`; `hir_preserves_checked_global_resolution_kind`; pre-fix `lower_hir.rs` contained independent function/struct/enum/type/generic inference tables. | `SemanticModel` now carries checker-authoritative types/symbols/resolutions; HIR lowering is structural-only; MIR consumes checked global kinds and binding types. | RESOLVED |
 | M1-006 | Major | Module system | Recursive namespace-rewrite loader needs broader duplicate/diamond/alias/canonicalization/symlink/platform coverage. Canonical paths are used only for cycle detection, not global module identity/deduplication, and imported nominal types/struct constructors are not expressible through current qualification rewriting. | Current loader recursively re-loads modules; `util.twice` works, but qualified imported type/constructor paths do not. | Define module identity/qualification semantics and add the full conformance/regression matrix. | OPEN |
@@ -55,7 +55,7 @@ No repair is complete until its test has been observed failing for the intended 
 |---|---|---|---|---|
 | M1-001 | `missing_return_path_is_rejected`; `returning_branch_unifies_with_tail_branch`; `all_if_branches_may_return_explicitly`; nested/while/unreachable/runtime boundaries | CI 42355699407: missing-return test was accepted with `diagnostics: []`; mixed return/tail test was rejected as `Unit` vs `i64` | CI 42355902092 green for core regressions; CI 42355992729 green for expanded type/runtime boundary matrix | `d0b45f281d0a1ea228b435c457a4e9066e4d6c2d` + integration fixes through `2dc0a9b9811e5d432e481170cdf1a9ed1fe3bf9c`; boundary tests `45b0ba7166a215659067bba9b708e2ce86c0f530` |
 | M1-002 | `logical_and_lowers_to_control_flow_not_eager_binary`; `false_and_skips_trapping_rhs`; `true_or_skips_trapping_rhs`; `logical_operators_evaluate_rhs_when_required` | CI 42356104422: MIR test showed a single eager `Rvalue::Binary { op: And }` block | CI 42356235494 green for MIR + skip-RHS runtime tests; CI 42356279096 green for required-RHS evaluation boundaries | `a852470949e9ad17737a083d27a173b946cfb325`, formatting integration `7e137810cce057e67970e39a101aa52625d61d16` |
-| M1-003 | pending | NOT RECORDED | NOT RECORDED | — |
+| M1-003 | `unknown_declared_type_is_rejected`; `nominal_generic_arity_is_checked`; duplicate generic/field/type/function collisions; forward/generic/primitive/scope/recursive boundaries | CI 42356411195: six intended tests failed with no diagnostics; nested-shadowing policy test already passed | CI 42356651208 green for core repairs; CI 42356689441 green for expanded boundary matrix | `5911644db0c8da264c6887340fc4df74f903fb96`, compatibility/cleanup through `1a22cc2329687d980898529e446d5d19eb8ec9a4`; boundary tests `9f7759aa52b1740e7d4b6e70ff680725b19d31c1` |
 | M1-004 | pending | NOT RECORDED | NOT RECORDED | — |
 | M1-005 | `match_binding_local_keeps_checked_payload_type`; `hir_preserves_checked_global_resolution_kind` | CI 42354924948: MIR binding was `Unknown` vs expected `I64`; CI 42355127048: compile failed because HIR had no checked global-kind representation | CI 42354993528 green after binding-type preservation; CI 42355329658 green after checked global-kind handoff; CI 42355570648 green after full checker-authoritative SemanticModel refactor | `6832ec15764fbe12f131f42b5f70324b21aefdc4`, `7bee810aed2546087aa7d030855e9bdb181a3945`, `9d1b69fc48af8909acfb20fc8e86bd792bed5dd5`, final integration `b012b4e57bc67d2ee4413a06e9f563e713ba05f4` |
 | M1-006 | pending | NOT RECORDED | NOT RECORDED | — |
@@ -83,7 +83,7 @@ The 2026-11-07 review explicitly inspected:
 - Rust manifests, lockfile policy, toolchain file, and CI workflow;
 - README capability claims.
 
-No Critical finding was identified in this pass. Major findings M1-003, M1-004, and M1-006 through M1-009 remain OPEN; M1-001, M1-002, M1-005, and M1-010 are RESOLVED with RED -> GREEN evidence. A fresh whole-branch adversarial review remains mandatory after all repairs.
+No Critical finding was identified in this pass. Major findings M1-004 and M1-006 through M1-009 remain OPEN; M1-001, M1-002, M1-003, M1-005, and M1-010 are RESOLVED with RED -> GREEN evidence. A fresh whole-branch adversarial review remains mandatory after all repairs.
 
 ## 3.2 Execution rulings
 
@@ -133,8 +133,8 @@ None identified yet. Initial full M1 review completed 2026-11-07. Final whole-br
 
 ### Major
 
-OPEN: M1-003, M1-004, M1-006, M1-007, M1-008, M1-009.  
-RESOLVED with retained RED -> GREEN evidence: M1-001, M1-002, M1-005, M1-010.
+OPEN: M1-004, M1-006, M1-007, M1-008, M1-009.  
+RESOLVED with retained RED -> GREEN evidence: M1-001, M1-002, M1-003, M1-005, M1-010.
 
 ### Minor
 
