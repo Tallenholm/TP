@@ -1,4 +1,4 @@
-use tp_compiler::{Compiler, RunFailure};
+use tp_compiler::{Compiler, RunFailure, Value};
 
 #[test]
 fn executes_arithmetic_program() {
@@ -70,4 +70,26 @@ fn mixed_return_and_tail_branch_executes_both_paths() {
         )
         .expect("program should run");
     assert_eq!(report.value.as_i64(), Some(3));
+}
+
+#[test]
+fn false_and_skips_trapping_rhs() {
+    let report = Compiler::new()
+        .run_source(
+            "main.tp",
+            "fn main() -> Bool { false && (10 / 0 == 1) }",
+        )
+        .expect("short-circuit should skip RHS");
+    assert_eq!(report.value, Value::Bool(false));
+}
+
+#[test]
+fn true_or_skips_trapping_rhs() {
+    let report = Compiler::new()
+        .run_source(
+            "main.tp",
+            "fn main() -> Bool { true || (10 / 0 == 1) }",
+        )
+        .expect("short-circuit should skip RHS");
+    assert_eq!(report.value, Value::Bool(true));
 }

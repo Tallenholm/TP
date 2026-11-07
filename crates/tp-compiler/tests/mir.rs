@@ -1,4 +1,4 @@
-use tp_compiler::{Compiler, Terminator, Type};
+use tp_compiler::{BinaryOp, Compiler, MirStatement, Rvalue, Terminator, Type};
 
 #[test]
 fn if_expression_creates_branch_and_join_blocks() {
@@ -59,4 +59,41 @@ fn match_binding_local_keeps_checked_payload_type() {
         .expect("match binding local");
 
     assert_eq!(binding.ty, Type::I64);
+}
+
+#[test]
+fn logical_and_lowers_to_control_flow_not_eager_binary() {
+    let mir = Compiler::new()
+        .lower_mir_source("main.tp", "fn main() -> Bool { false && true }")
+        .expect("valid TP should lower to MIR");
+    let function = mir
+        .functions
+        .iter()
+        .find(|function| function.name == "main")
+        .expect("main function");
+
+    assert!(
+        function
+            .blocks
+            .iter()
+            .any(|block| matches!(block.terminator, Terminator::Branch { .. })),
+        "{:#?}",
+        function.blocks
+    );
+    assert!(
+        !function.blocks.iter().flat_map(|block| &block.statements).any(
+            |statement| matches!(
+                statement,
+                MirStatement::Assign {
+                    value: Rvalue::Binary {
+                        op: BinaryOp::And,
+                        ..
+                    },
+                    ..
+                }
+            )
+        ),
+        "{:#?}",
+        function.blocks
+    );
 }
