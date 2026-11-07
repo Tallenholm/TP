@@ -122,7 +122,12 @@ fn unicode_alphabetic_identifier_is_accepted_without_normalization() {
     let source = SourceFile::new("main.tp", "fn café() { }");
     let result = Lexer::new(&source).lex();
     assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
-    assert!(result.tokens.iter().any(|token| token.kind == TokenKind::Identifier));
+    assert!(
+        result
+            .tokens
+            .iter()
+            .any(|token| token.kind == TokenKind::Identifier)
+    );
 }
 
 #[test]
