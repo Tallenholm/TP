@@ -1,0 +1,5 @@
+import module_error_util as util;
+
+fn main() {
+    util.bad();
+}

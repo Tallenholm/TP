@@ -20,3 +20,18 @@ fn renders_stable_human_diagnostic() {
         "error[TP-E0300]: type mismatch\n --> main.tp:2:1\n  |\n2 | print(x)\n  | ^^^^^\n  = help: expected i64\n"
     );
 }
+
+#[test]
+fn human_diagnostic_uses_character_width_and_renders_secondary_labels() {
+    let src = SourceFile::new("unicode.tp", "αβ\n");
+    let diagnostic = Diagnostic::error("TP-E0200", "collision")
+        .with_primary(Span::new(src.id(), 0, 2))
+        .with_label(Span::new(src.id(), 2, 4), "other declaration");
+
+    let rendered = render_diagnostic(&src, &diagnostic);
+    assert!(rendered.contains("1 | αβ\n  | ^\n"), "{rendered}");
+    assert!(
+        rendered.contains("label: unicode.tp:1:2: other declaration"),
+        "{rendered}"
+    );
+}

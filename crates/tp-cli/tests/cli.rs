@@ -70,3 +70,48 @@ fn json_diagnostics_are_machine_readable_objects() {
         "{stderr}"
     );
 }
+
+#[test]
+fn human_diagnostic_includes_source_location_and_snippet() {
+    let output = tp()
+        .arg("check")
+        .arg(fixture("invalid.tp"))
+        .output()
+        .expect("tp should launch");
+    assert_eq!(output.status.code(), Some(1));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("invalid.tp:2:"), "{stderr}");
+    assert!(stderr.contains("print(missing);"), "{stderr}");
+    assert!(stderr.contains("^"), "{stderr}");
+}
+
+#[test]
+fn json_diagnostic_includes_source_range_labels_and_help_fields() {
+    let output = tp()
+        .args(["check", "--diagnostic-format", "json"])
+        .arg(fixture("invalid.tp"))
+        .output()
+        .expect("tp should launch");
+    assert_eq!(output.status.code(), Some(1));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("\"primary\":{"), "{stderr}");
+    assert!(stderr.contains("\"file\":"), "{stderr}");
+    assert!(stderr.contains("invalid.tp"), "{stderr}");
+    assert!(stderr.contains("\"line\":2"), "{stderr}");
+    assert!(stderr.contains("\"column\":"), "{stderr}");
+    assert!(stderr.contains("\"labels\":["), "{stderr}");
+    assert!(stderr.contains("\"help\":null"), "{stderr}");
+}
+
+#[test]
+fn imported_file_diagnostic_retains_its_source_file() {
+    let output = tp()
+        .arg("check")
+        .arg(fixture("module_error_main.tp"))
+        .output()
+        .expect("tp should launch");
+    assert_eq!(output.status.code(), Some(1));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("module_error_util.tp:2:"), "{stderr}");
+    assert!(stderr.contains("missing"), "{stderr}");
+}
