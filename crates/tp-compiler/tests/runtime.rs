@@ -75,10 +75,7 @@ fn mixed_return_and_tail_branch_executes_both_paths() {
 #[test]
 fn false_and_skips_trapping_rhs() {
     let report = Compiler::new()
-        .run_source(
-            "main.tp",
-            "fn main() -> Bool { false && (10 / 0 == 1) }",
-        )
+        .run_source("main.tp", "fn main() -> Bool { false && (10 / 0 == 1) }")
         .expect("short-circuit should skip RHS");
     assert_eq!(report.value, Value::Bool(false));
 }
@@ -86,10 +83,7 @@ fn false_and_skips_trapping_rhs() {
 #[test]
 fn true_or_skips_trapping_rhs() {
     let report = Compiler::new()
-        .run_source(
-            "main.tp",
-            "fn main() -> Bool { true || (10 / 0 == 1) }",
-        )
+        .run_source("main.tp", "fn main() -> Bool { true || (10 / 0 == 1) }")
         .expect("short-circuit should skip RHS");
     assert_eq!(report.value, Value::Bool(true));
 }

@@ -81,8 +81,11 @@ fn logical_and_lowers_to_control_flow_not_eager_binary() {
         function.blocks
     );
     assert!(
-        !function.blocks.iter().flat_map(|block| &block.statements).any(
-            |statement| matches!(
+        !function
+            .blocks
+            .iter()
+            .flat_map(|block| &block.statements)
+            .any(|statement| matches!(
                 statement,
                 MirStatement::Assign {
                     value: Rvalue::Binary {
@@ -91,8 +94,7 @@ fn logical_and_lowers_to_control_flow_not_eager_binary() {
                     },
                     ..
                 }
-            )
-        ),
+            )),
         "{:#?}",
         function.blocks
     );
