@@ -24,7 +24,7 @@
 | G1-R09 | Establish one authoritative semantic source of truth | PASS | `SemanticModel` now carries checked function signatures, expression/block types, binding symbols/types, local resolutions, and global categories into HIR; `lower_hir.rs` is structural-only and MIR consumes checked global/binding facts. CI 42355570648 green. |
 | G1-R10 | Harden module graph/path/canonicalization semantics | PASS | Canonical-path module identity now deduplicates repeated/diamond/symlink imports; qualified imported nominal types/struct literals/enum constructors/patterns work; deterministic lowering and host-filesystem behavior are tested/documented. |
 | G1-R11 | Reproducible locked verification policy | PASS | `rust-toolchain.toml` pins Rust 1.85.0; CI prints rustc/cargo versions and runs clippy/tests/smokes with committed `Cargo.lock` via `--locked`. CI 42410172728 passed on rustc/cargo 1.85.0. |
-| G1-R12 | Zero unresolved Critical/Major findings | PASS | All ten Major findings M1-001 through M1-010 are RESOLVED with retained RED -> GREEN evidence; no Critical finding has been identified. Final whole-branch review remains required before Gate 1 PASS. |
+| G1-R12 | Zero unresolved Critical/Major findings | FAIL | Final whole-branch review discovered new Major findings M1-011 and M1-012; both must complete RED -> GREEN repair before this requirement can return to PASS. |
 | G1-R13 | Full tests/format/lint/fresh CI after all repairs | FAIL | Prior green CI predates required repairs and does not close this gate. |
 | G1-R14 | Documentation accurately reflects stabilized M1 behavior | FAIL | Docs now mark gate status, but semantic docs remain subject to Gate 1/2 work. |
 
@@ -44,6 +44,11 @@ Every finding must remain here until resolved. Do not delete findings after fixe
 | M1-008 | Major | Literals/parser | Oversized integer parsing could consume a token and return `None` with no diagnostic, silently dropping syntax; `i64::MIN`, non-finite floats, raw-newline strings, escapes, and Unicode identifier boundaries were not all explicit. | Lexer/parser/runtime boundary tests for raw newline, invalid escape, Unicode spelling, oversized integer expression/pattern, huge float, exact `i64::MIN`. | Parser now emits stable TP-E0100 range/finite diagnostics with placeholder AST recovery; exact negative i64 minimum is recognized before positive parsing; lexer rejects raw newlines while retaining existing escape/Unicode behavior. | RESOLVED |
 | M1-009 | Major | Pattern matching | Compile-time exhaustiveness was enforced only for enum matches, and refutable payload patterns such as `Some(1)` incorrectly counted as covering the whole variant. Duplicate/post-catch-all arms were not diagnosed. | Bool/open-domain/exhaustive/unreachable/refutable-enum payload regression matrix. | Domain-aware match coverage now requires both Bool values or catch-all; open domains require wildcard/binding; enum variants count as fully covered only with irrefutable payload patterns; duplicate/post-exhaustive arms diagnose as unreachable. | RESOLVED |
 | M1-010 | Major | Name resolution / semantic consistency | Global value-name precedence was inconsistent across checker, HIR, and MIR. Function/enum-variant collisions and user declarations named `print` could be accepted yet resolve differently across stages. | Regression tests `function_and_enum_variant_value_names_cannot_collide` and `builtin_print_name_is_reserved`. | Reject ambiguous function/variant value names and reserve builtin `print`; the broader semantic-source refactor in M1-005 will carry checked global resolution into HIR/MIR. | RESOLVED |
+
+| M1-011 | Major | Function result contract | Unit/default-Unit functions skip body-result compatibility, so an unterminated non-Unit tail such as `fn f() { 42 }` is accepted and silently discarded at runtime. | Final whole-branch review of `check_function`: result compatibility is guarded by `sig.result != Type::Unit`. | Enforce the declared/default Unit result against fallthrough body type while preserving explicit terminated-expression behavior; RED -> GREEN regression. | OPEN |
+| M1-012 | Major | Type system / optional sugar | `T?` lowers directly to nominal `Option<T>` without proving that `Option` is declared, bypassing M1's declared-nominal-type rule and the documented rule that Option is not compiler-only magic. | Final review of `resolve_type_ref_with_generics`: optional wrapping occurs after name validation and never validates `Option`. | Require an in-scope declared `Option<T>` with arity 1 before optional sugar is accepted, or reject the sugar; RED -> GREEN regression. | OPEN |
+| M1-013 | Minor | Pattern matching | Exact duplicate refutable nested enum payload patterns (for example two `Some(1)` arms) are not recognized as unreachable because coverage only tracks fully-irrefutable variant coverage. | Final review of `check_match` / `PatternCoverage`. | Either add exact-pattern duplicate tracking or document conservative unreachable analysis before Gate 1 closure. | OPEN |
+| M1-014 | Minor | Floating-point semantics | Finite float literals are specified, but arithmetic that produces Infinity/NaN is not yet explicitly documented/tested; runtime currently follows IEEE operations except explicit divide/remainder-by-zero traps. | Final interpreter review of `eval_f64`. | Record and test the M1 runtime policy; no performance claim implied. | OPEN |
 
 Severity may only be changed with documented reasoning. More findings will be added as review continues.
 
@@ -139,7 +144,8 @@ None identified yet. Initial full M1 review completed 2026-11-07. Final whole-br
 
 ### Major
 
-OPEN: none.  
+OPEN Major: M1-011, M1-012.  
+OPEN Minor: M1-013, M1-014.  
 RESOLVED with retained RED -> GREEN evidence: M1-001 through M1-010.
 
 ### Minor
@@ -169,12 +175,12 @@ Repository governance now explicitly marks Gate 1 as active and M2+ as locked. L
 
 ## 14. Known Limitations
 
-No Critical/Major finding is currently open. Remaining Gate 1 work is documentation audit, final whole-branch adversarial review, and fresh final verification/CI. M1 module limitations accepted for this gate are documented in `docs/M1_MODULE_SEMANTICS.md` and are subject to Gate 2 semantic freeze.
+Final review reopened two Major findings (M1-011/M1-012) and identified two Minor gaps (M1-013/M1-014). Gate 1 remains blocked until the Majors are repaired and the Minor items are either resolved or explicitly documented as non-blocking limitations. M1 module limitations accepted for this gate are documented in `docs/M1_MODULE_SEMANTICS.md` and are subject to Gate 2 semantic freeze.
 
 ## 15. Final Decision
 
 **Decision:** FAIL / ACTIVE  
-**Reason:** All known Critical/Major correctness findings and reproducibility requirements are resolved, but Gate 1 still requires final conformance/stress evidence, documentation audit, branch reconciliation, fresh final CI, and whole-branch adversarial review.
+**Reason:** Final whole-branch review found new Major semantic gaps M1-011/M1-012 after the earlier repair set. Gate 1 remains ACTIVE until those are repaired, Minor review items are resolved/documented, documentation is audited, and fresh final CI passes.
 
 ### Owner authorization
 
