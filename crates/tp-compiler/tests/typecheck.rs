@@ -97,7 +97,6 @@ fn result_constructor_infers_generic_payloads() {
     assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
 }
 
-
 #[test]
 fn function_and_enum_variant_value_names_cannot_collide() {
     let report = check(
