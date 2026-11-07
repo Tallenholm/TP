@@ -42,7 +42,7 @@ Every finding must remain here until resolved. Do not delete findings after fixe
 | M1-006 | Major | Module system | Recursive namespace-rewrite loader needs broader duplicate/diamond/alias/canonicalization/symlink/platform coverage. Canonical paths are used only for cycle detection, not global module identity/deduplication, and imported nominal types/struct constructors are not expressible through current qualification rewriting. | Current loader recursively re-loads modules; `util.twice` works, but qualified imported type/constructor paths do not. | Define module identity/qualification semantics and add the full conformance/regression matrix. | OPEN |
 | M1-007 | Major | Entry point | `main` shape and presence in executable mode were not fully validated statically; missing/parameterized entry points could reach interpreter runtime errors. | `main_must_not_take_parameters`; `run_requires_main_before_interpreter_execution`. | `main` is zero-parameter; return may be any normal checked M1 value; run mode requires `main` and emits TP-E0400 before interpretation; check mode does not require an entry point. | RESOLVED |
 | M1-008 | Major | Literals/parser | Oversized integer parsing could consume a token and return `None` with no diagnostic, silently dropping syntax; `i64::MIN`, non-finite floats, raw-newline strings, escapes, and Unicode identifier boundaries were not all explicit. | Lexer/parser/runtime boundary tests for raw newline, invalid escape, Unicode spelling, oversized integer expression/pattern, huge float, exact `i64::MIN`. | Parser now emits stable TP-E0100 range/finite diagnostics with placeholder AST recovery; exact negative i64 minimum is recognized before positive parsing; lexer rejects raw newlines while retaining existing escape/Unicode behavior. | RESOLVED |
-| M1-009 | Major | Pattern matching | Compile-time exhaustiveness is enforced only for enum matches. Non-exhaustive Bool/literal matches can pass checking and lower to an `otherwise` runtime trap, contradicting the design requirement for compile-time exhaustiveness checking. | `fn main(x: Bool) -> i64 { match x { true => 1 } }` can reach MIR runtime trap for `false`. | Require exhaustive finite-domain coverage where provable and require wildcard/default coverage for open/infinite literal domains; add unreachable/duplicate-arm policy tests. | OPEN |
+| M1-009 | Major | Pattern matching | Compile-time exhaustiveness was enforced only for enum matches, and refutable payload patterns such as `Some(1)` incorrectly counted as covering the whole variant. Duplicate/post-catch-all arms were not diagnosed. | Bool/open-domain/exhaustive/unreachable/refutable-enum payload regression matrix. | Domain-aware match coverage now requires both Bool values or catch-all; open domains require wildcard/binding; enum variants count as fully covered only with irrefutable payload patterns; duplicate/post-exhaustive arms diagnose as unreachable. | RESOLVED |
 | M1-010 | Major | Name resolution / semantic consistency | Global value-name precedence was inconsistent across checker, HIR, and MIR. Function/enum-variant collisions and user declarations named `print` could be accepted yet resolve differently across stages. | Regression tests `function_and_enum_variant_value_names_cannot_collide` and `builtin_print_name_is_reserved`. | Reject ambiguous function/variant value names and reserve builtin `print`; the broader semantic-source refactor in M1-005 will carry checked global resolution into HIR/MIR. | RESOLVED |
 
 Severity may only be changed with documented reasoning. More findings will be added as review continues.
@@ -61,7 +61,7 @@ No repair is complete until its test has been observed failing for the intended 
 | M1-006 | pending | NOT RECORDED | NOT RECORDED | — |
 | M1-007 | `main_must_not_take_parameters`; `run_requires_main_before_interpreter_execution` | CI 42356814898: missing-main run reached runtime failure instead of compile failure; parameter-shape regression was queued behind that failing suite | CI 42356929666 green for both contract tests plus full suite/smokes | `6752724fd35f641fb7385f182e0b1cb54a77a501`, formatting integration `53c40b4e52034d8475b7ab65731d1cf09b8bfe4c` |
 | M1-008 | raw-newline/escape/Unicode lexer boundaries; oversized integer expression/pattern; non-finite float; exact `i64::MIN` runtime | CI 42357118044: raw newline string accepted with `diagnostics: []`; after lexer fix, CI 42357198323: oversized expression/float had no diagnostics and oversized pattern cascaded without the required range diagnostic | CI 42357253254 green for full literal/Unicode matrix plus workspace/smokes | lexer fix `6ccbeee622ed7ba6601b18659b76af61c3e15865`; numeric/parser fix `debb74b0daa0b48d3026ea16e2d59240c7be52cc` |
-| M1-009 | pending | NOT RECORDED | NOT RECORDED | — |
+| M1-009 | `bool_match_must_cover_both_values`; `exhaustive_bool_match_is_allowed`; `open_literal_domain_requires_catch_all`; wildcard/open-domain boundary; unreachable duplicate/post-catch-all arms; refutable enum payload coverage | CI 42357479861: four intended tests failed with empty diagnostics while already-valid exhaustive/wildcard cases passed | CI 42357592503 green for full match matrix + workspace/smokes | `9f1a05034cf414d763b2332d181ad5083d044d18`, formatting integration `47e3430f4377be048fd60de21b5fa18cc05f7c35` |
 | M1-010 | `function_and_enum_variant_value_names_cannot_collide`; `builtin_print_name_is_reserved` | CI 42354716838: collision test failed with `diagnostics: []`; CI 42354802869: builtin test failed with `diagnostics: []` | CI 42354765665 green after function/variant rejection; CI 42354843025 green after builtin reservation | `d31237b5466a90504eeb342defd9d10b34e87904`, `fd6faf4c252054ca7739610a9f1452259f05c0fb` |
 
 ## 3.1 Completed adversarial review scope
@@ -83,7 +83,7 @@ The 2026-11-07 review explicitly inspected:
 - Rust manifests, lockfile policy, toolchain file, and CI workflow;
 - README capability claims.
 
-No Critical finding was identified in this pass. Major findings M1-004, M1-006, and M1-009 remain OPEN; M1-001, M1-002, M1-003, M1-005, M1-007, M1-008, and M1-010 are RESOLVED with RED -> GREEN evidence. A fresh whole-branch adversarial review remains mandatory after all repairs.
+No Critical finding was identified in this pass. Major findings M1-004 and M1-006 remain OPEN; M1-001, M1-002, M1-003, M1-005, M1-007, M1-008, M1-009, and M1-010 are RESOLVED with RED -> GREEN evidence. A fresh whole-branch adversarial review remains mandatory after all repairs.
 
 ## 3.2 Execution rulings
 
@@ -133,8 +133,8 @@ None identified yet. Initial full M1 review completed 2026-11-07. Final whole-br
 
 ### Major
 
-OPEN: M1-004, M1-006, M1-009.  
-RESOLVED with retained RED -> GREEN evidence: M1-001, M1-002, M1-003, M1-005, M1-007, M1-008, M1-010.
+OPEN: M1-004, M1-006.  
+RESOLVED with retained RED -> GREEN evidence: M1-001, M1-002, M1-003, M1-005, M1-007, M1-008, M1-009, M1-010.
 
 ### Minor
 
