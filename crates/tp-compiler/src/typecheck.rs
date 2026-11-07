@@ -92,11 +92,8 @@ impl TypeChecker {
 
             if matches!(name.as_str(), "Unit" | "Bool" | "i64" | "f64" | "String") {
                 self.diagnostics.push(
-                    Diagnostic::error(
-                        "TP-E0200",
-                        format!("type name `{name}` is reserved"),
-                    )
-                    .with_primary(span),
+                    Diagnostic::error("TP-E0200", format!("type name `{name}` is reserved"))
+                        .with_primary(span),
                 );
                 continue;
             }
@@ -120,12 +117,9 @@ impl TypeChecker {
             };
             if let Some(previous) = self.type_decls.get(name) {
                 self.diagnostics.push(
-                    Diagnostic::error(
-                        "TP-E0200",
-                        format!("duplicate type name `{name}`"),
-                    )
-                    .with_primary(span)
-                    .with_label(previous.span, "previous type declaration is here"),
+                    Diagnostic::error("TP-E0200", format!("duplicate type name `{name}`"))
+                        .with_primary(span)
+                        .with_label(previous.span, "previous type declaration is here"),
                 );
             } else {
                 self.type_decls.insert(name.clone(), info);
@@ -145,8 +139,7 @@ impl TypeChecker {
                         continue;
                     }
 
-                    let type_params: HashSet<String> =
-                        decl.type_params.iter().cloned().collect();
+                    let type_params: HashSet<String> = decl.type_params.iter().cloned().collect();
                     let mut fields = HashMap::new();
                     for field in &decl.fields {
                         let ty = self.resolve_type_ref_with_generics(&field.ty, &type_params);
@@ -192,9 +185,7 @@ impl TypeChecker {
                             payload: variant
                                 .payload
                                 .iter()
-                                .map(|ty| {
-                                    self.resolve_type_ref_with_generics(ty, &type_params)
-                                })
+                                .map(|ty| self.resolve_type_ref_with_generics(ty, &type_params))
                                 .collect(),
                             span: variant.span,
                         };
@@ -1172,11 +1163,8 @@ impl TypeChecker {
                     }
                 } else {
                     self.diagnostics.push(
-                        Diagnostic::error(
-                            "TP-E0200",
-                            format!("unknown type `{name}`"),
-                        )
-                        .with_primary(type_ref.span),
+                        Diagnostic::error("TP-E0200", format!("unknown type `{name}`"))
+                            .with_primary(type_ref.span),
                     );
                     Type::Unknown
                 }
