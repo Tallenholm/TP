@@ -111,3 +111,16 @@ fn function_and_enum_variant_value_names_cannot_collide() {
         report.diagnostics
     );
 }
+
+#[test]
+fn builtin_print_name_is_reserved() {
+    let report = check("fn print(x: i64) -> i64 { x } fn main() { print(42); }");
+    assert!(
+        report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("reserved builtin")),
+        "expected a reserved builtin diagnostic, got: {:#?}",
+        report.diagnostics
+    );
+}
