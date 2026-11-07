@@ -109,6 +109,7 @@ Establish the rules and repository structure that every later person/agent must 
 - Dependency-license inventory process.
 - Repository visibility decision (private recommended while proprietary development is sensitive).
 - Branch policy: `main` is the last gated/stable state.
+- Server-side branch protection/rulesets are optional defense-in-depth controls. Their absence does not block Gate 0 when the owner explicitly accepts the bypass risk and records that decision in an ADR/gate report.
 - Draft PR required for active milestone work.
 - No generated build artifacts.
 - CI is read-only verification, not an uncontrolled source-mutating bot.
