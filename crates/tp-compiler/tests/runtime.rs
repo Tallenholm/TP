@@ -60,3 +60,14 @@ fn division_by_zero_is_runtime_trap() {
     assert_eq!(error.code, "TP-E0500");
     assert!(error.message.contains("division by zero"));
 }
+
+#[test]
+fn mixed_return_and_tail_branch_executes_both_paths() {
+    let report = Compiler::new()
+        .run_source(
+            "main.tp",
+            "fn choose(x: Bool) -> i64 { if x { return 1; } else { 2 } } fn main() -> i64 { choose(true) + choose(false) }",
+        )
+        .expect("program should run");
+    assert_eq!(report.value.as_i64(), Some(3));
+}

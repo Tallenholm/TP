@@ -148,3 +148,34 @@ fn all_if_branches_may_return_explicitly() {
     let report = check("fn choose(x: Bool) -> i64 { if x { return 1; } else { return 2; } }");
     assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
 }
+
+#[test]
+fn nested_missing_return_path_is_rejected() {
+    let report =
+        check("fn broken(a: Bool, b: Bool) -> i64 { if a { if b { return 1; } } }");
+    assert!(
+        report.diagnostics.iter().any(|diagnostic| diagnostic
+            .message
+            .contains("function body has the wrong result type")),
+        "{:#?}",
+        report.diagnostics
+    );
+}
+
+#[test]
+fn return_inside_while_does_not_make_function_total() {
+    let report = check("fn broken(x: Bool) -> i64 { while x { return 1; } }");
+    assert!(
+        report.diagnostics.iter().any(|diagnostic| diagnostic
+            .message
+            .contains("function body has the wrong result type")),
+        "{:#?}",
+        report.diagnostics
+    );
+}
+
+#[test]
+fn unreachable_tail_does_not_restore_fallthrough() {
+    let report = check("fn value() -> i64 { return 1; \"unreachable\" }");
+    assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
+}
