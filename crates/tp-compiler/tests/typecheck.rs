@@ -129,10 +129,9 @@ fn builtin_print_name_is_reserved() {
 fn missing_return_path_is_rejected() {
     let report = check("fn broken(x: Bool) -> i64 { if x { return 1; } }");
     assert!(
-        report
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.message.contains("function body has the wrong result type")),
+        report.diagnostics.iter().any(|diagnostic| diagnostic
+            .message
+            .contains("function body has the wrong result type")),
         "expected missing return path diagnostic, got: {:#?}",
         report.diagnostics
     );
@@ -146,7 +145,6 @@ fn returning_branch_unifies_with_tail_branch() {
 
 #[test]
 fn all_if_branches_may_return_explicitly() {
-    let report =
-        check("fn choose(x: Bool) -> i64 { if x { return 1; } else { return 2; } }");
+    let report = check("fn choose(x: Bool) -> i64 { if x { return 1; } else { return 2; } }");
     assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
 }
