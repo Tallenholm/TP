@@ -692,20 +692,72 @@ impl TypeChecker {
             Type::Named { name, .. } => self.enums.get(name).cloned(),
             _ => None,
         };
-        let mut covered = HashSet::new();
-        let mut wildcard = false;
+
+        let mut covered_variants = HashSet::new();
+        let mut covered_bools = HashSet::new();
+        let mut covered_integers = HashSet::new();
+        let mut covered_strings = HashSet::new();
+        let mut catch_all = false;
         let mut result: Option<Type> = None;
 
         for arm in arms {
+            let previously_total = match_exhaustive(
+                &value_ty,
+                enum_info.as_ref(),
+                catch_all,
+                &covered_variants,
+                &covered_bools,
+            );
+
             self.scopes.push();
             let coverage = self.check_pattern(&arm.pattern, &value_ty);
-            match coverage {
-                PatternCoverage::Variant(name) => {
-                    covered.insert(name);
+            let duplicate = match &coverage {
+                PatternCoverage::Variant {
+                    name,
+                    irrefutable: true,
+                } => covered_variants.contains(name),
+                PatternCoverage::Bool(value) => covered_bools.contains(value),
+                PatternCoverage::Integer(value) => covered_integers.contains(value),
+                PatternCoverage::String(value) => covered_strings.contains(value),
+                PatternCoverage::CatchAll => catch_all,
+                PatternCoverage::Variant {
+                    irrefutable: false,
+                    ..
                 }
-                PatternCoverage::Wildcard => wildcard = true,
-                PatternCoverage::Other => {}
+                | PatternCoverage::Other => false,
+            };
+            let unreachable = previously_total || duplicate;
+            if unreachable {
+                self.diagnostics.push(
+                    Diagnostic::error("TP-E0300", "unreachable match arm")
+                        .with_primary(arm.span),
+                );
+            } else {
+                match coverage {
+                    PatternCoverage::Variant {
+                        name,
+                        irrefutable: true,
+                    } => {
+                        covered_variants.insert(name);
+                    }
+                    PatternCoverage::Bool(value) => {
+                        covered_bools.insert(value);
+                    }
+                    PatternCoverage::Integer(value) => {
+                        covered_integers.insert(value);
+                    }
+                    PatternCoverage::String(value) => {
+                        covered_strings.insert(value);
+                    }
+                    PatternCoverage::CatchAll => catch_all = true,
+                    PatternCoverage::Variant {
+                        irrefutable: false,
+                        ..
+                    }
+                    | PatternCoverage::Other => {}
+                }
             }
+
             let arm_ty = self.check_expr(&arm.body);
             self.scopes.pop();
             result = Some(match result {
@@ -714,12 +766,12 @@ impl TypeChecker {
             });
         }
 
-        if let Some(info) = enum_info {
-            if !wildcard {
+        if !value_diverges && !value_ty.is_unknown() && !catch_all {
+            if let Some(info) = enum_info {
                 let mut missing: Vec<_> = info
                     .variants
                     .keys()
-                    .filter(|name| !covered.contains(*name))
+                    .filter(|name| !covered_variants.contains(*name))
                     .cloned()
                     .collect();
                 missing.sort();
@@ -739,6 +791,38 @@ impl TypeChecker {
                         .with_primary(span),
                     );
                 }
+            } else if value_ty == Type::Bool {
+                let mut missing = Vec::new();
+                if !covered_bools.contains(&false) {
+                    missing.push("false");
+                }
+                if !covered_bools.contains(&true) {
+                    missing.push("true");
+                }
+                if !missing.is_empty() {
+                    self.diagnostics.push(
+                        Diagnostic::error(
+                            "TP-E0300",
+                            format!(
+                                "non-exhaustive match; missing {}",
+                                missing
+                                    .iter()
+                                    .map(|value| format!("`{value}`"))
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            ),
+                        )
+                        .with_primary(span),
+                    );
+                }
+            } else {
+                self.diagnostics.push(
+                    Diagnostic::error(
+                        "TP-E0300",
+                        "non-exhaustive match; add a wildcard or binding arm",
+                    )
+                    .with_primary(span),
+                );
             }
         }
 
@@ -751,7 +835,7 @@ impl TypeChecker {
 
     fn check_pattern(&mut self, pattern: &Pattern, target: &Type) -> PatternCoverage {
         match &pattern.kind {
-            PatternKind::Wildcard => PatternCoverage::Wildcard,
+            PatternKind::Wildcard => PatternCoverage::CatchAll,
             PatternKind::Name(name) => {
                 if let Type::Named {
                     name: enum_name,
@@ -761,7 +845,10 @@ impl TypeChecker {
                     if let Some(enum_info) = self.enums.get(enum_name).cloned() {
                         if let Some(variant) = enum_info.variants.get(name).cloned() {
                             if variant.payload.is_empty() {
-                                return PatternCoverage::Variant(name.clone());
+                                return PatternCoverage::Variant {
+                                    name: name.clone(),
+                                    irrefutable: true,
+                                };
                             }
                         }
                     }
@@ -785,7 +872,7 @@ impl TypeChecker {
                         );
                     }
                 }
-                PatternCoverage::Other
+                PatternCoverage::CatchAll
             }
             PatternKind::Variant { name, args } => {
                 let Type::Named {
@@ -834,27 +921,32 @@ impl TypeChecker {
                     .cloned()
                     .zip(enum_args.iter().cloned())
                     .collect();
+                let mut irrefutable = args.len() == variant.payload.len();
                 for (index, child) in args.iter().enumerate() {
                     let child_ty = variant
                         .payload
                         .get(index)
                         .map(|ty| substitute_type(ty, &substitution))
                         .unwrap_or(Type::Unknown);
-                    self.check_pattern(child, &child_ty);
+                    let child_coverage = self.check_pattern(child, &child_ty);
+                    irrefutable &= matches!(child_coverage, PatternCoverage::CatchAll);
                 }
-                PatternCoverage::Variant(name.clone())
+                PatternCoverage::Variant {
+                    name: name.clone(),
+                    irrefutable,
+                }
             }
-            PatternKind::Integer(_) => {
+            PatternKind::Integer(value) => {
                 self.require_pattern_type(pattern.span, &Type::I64, target);
-                PatternCoverage::Other
+                PatternCoverage::Integer(*value)
             }
-            PatternKind::Bool(_) => {
+            PatternKind::Bool(value) => {
                 self.require_pattern_type(pattern.span, &Type::Bool, target);
-                PatternCoverage::Other
+                PatternCoverage::Bool(*value)
             }
-            PatternKind::String(_) => {
+            PatternKind::String(value) => {
                 self.require_pattern_type(pattern.span, &Type::String, target);
-                PatternCoverage::Other
+                PatternCoverage::String(value.clone())
             }
         }
     }
@@ -1256,9 +1348,31 @@ impl TypeChecker {
 
 #[derive(Debug)]
 enum PatternCoverage {
-    Variant(String),
-    Wildcard,
+    Variant { name: String, irrefutable: bool },
+    Bool(bool),
+    Integer(i64),
+    String(String),
+    CatchAll,
     Other,
+}
+
+fn match_exhaustive(
+    value_ty: &Type,
+    enum_info: Option<&EnumInfo>,
+    catch_all: bool,
+    covered_variants: &HashSet<String>,
+    covered_bools: &HashSet<bool>,
+) -> bool {
+    if catch_all {
+        return true;
+    }
+    if let Some(info) = enum_info {
+        return info
+            .variants
+            .keys()
+            .all(|name| covered_variants.contains(name));
+    }
+    *value_ty == Type::Bool && covered_bools.contains(&false) && covered_bools.contains(&true)
 }
 
 fn enum_instance(variant: &VariantInfo, substitution: &HashMap<String, Type>) -> Type {
