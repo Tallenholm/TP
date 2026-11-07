@@ -122,7 +122,11 @@ pub struct HirPattern {
 #[derive(Debug, Clone, PartialEq)]
 pub enum HirPatternKind {
     Wildcard,
-    Bind { symbol: SymbolId, name: String },
+    Bind {
+        symbol: SymbolId,
+        name: String,
+        ty: Type,
+    },
     Integer(i64),
     Bool(bool),
     String(String),
