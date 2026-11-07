@@ -1,4 +1,4 @@
-use tp_compiler::{Diagnostic, SourceFile, Span, render_diagnostic};
+use tp_compiler::{Diagnostic, SourceFile, SourceManager, Span, render_diagnostic, render_diagnostic_json};
 
 #[test]
 fn byte_span_maps_to_line_and_column() {
@@ -34,4 +34,25 @@ fn human_diagnostic_uses_character_width_and_renders_secondary_labels() {
         rendered.contains("label: unicode.tp:1:2: other declaration"),
         "{rendered}"
     );
+}
+
+#[test]
+fn json_diagnostic_preserves_secondary_label_and_help() {
+    let src = SourceFile::new("main.tp", "first\nsecond\n");
+    let primary = Span::new(src.id(), 0, 5);
+    let secondary = Span::new(src.id(), 6, 12);
+    let diagnostic = Diagnostic::error("TP-E0200", "collision")
+        .with_primary(primary)
+        .with_label(secondary, "previous declaration")
+        .with_help("rename one declaration");
+
+    let mut sources = SourceManager::default();
+    sources.insert(src);
+    let rendered = render_diagnostic_json(&sources, &diagnostic);
+
+    assert!(rendered.contains("\"schema\":1"), "{rendered}");
+    assert!(rendered.contains("\"file\":\"main.tp\""), "{rendered}");
+    assert!(rendered.contains("\"line\":1"), "{rendered}");
+    assert!(rendered.contains("\"message\":\"previous declaration\""), "{rendered}");
+    assert!(rendered.contains("\"help\":\"rename one declaration\""), "{rendered}");
 }
