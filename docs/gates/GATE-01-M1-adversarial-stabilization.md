@@ -21,7 +21,7 @@
 | G1-R06 | Define/test literal range, float, string, Unicode behavior | FAIL | Boundary policy/tests incomplete. |
 | G1-R07 | Statically validate executable `main` contract | FAIL | Entry-point contract not fully enforced before runtime. |
 | G1-R08 | Source-aware human and rich versioned JSON diagnostics | FAIL | CLI currently discards portions of structured source rendering/context. |
-| G1-R09 | Establish one authoritative semantic source of truth | FAIL | Type/semantic reconstruction is duplicated between checker and HIR lowering. |
+| G1-R09 | Establish one authoritative semantic source of truth | PASS | `SemanticModel` now carries checked function signatures, expression/block types, binding symbols/types, local resolutions, and global categories into HIR; `lower_hir.rs` is structural-only and MIR consumes checked global/binding facts. CI 42355570648 green. |
 | G1-R10 | Harden module graph/path/canonicalization semantics | FAIL | Broader duplicate/diamond/symlink/platform matrix required. |
 | G1-R11 | Reproducible locked verification policy | FAIL | Current CI requires hardening/explicit locked policy. |
 | G1-R12 | Zero unresolved Critical/Major findings | FAIL | Review remains open. |
@@ -38,7 +38,7 @@ Every finding must remain here until resolved. Do not delete findings after fixe
 | M1-002 | Major | MIR/runtime semantics | `&&` / `||` are lowered as ordinary eager binary expressions, so RHS side effects/traps occur when they should be skipped. | `false && dangerous()`; `true || dangerous()` | Lower through branches/join blocks and add side-effect/trap regressions. | OPEN |
 | M1-003 | Major | Type system | Unknown type names are materialized as named types without proving declarations exist; generic arity/parameter validation requires hardening. | Undeclared type signatures/generic edge cases. | Central type-name resolution and generic-arity diagnostics with tests. | OPEN |
 | M1-004 | Major | Diagnostics | CLI output discards source locations/labels/help; multi-file source retention is insufficient. The renderer itself ignores secondary labels and uses byte length for caret width, producing incorrect Unicode/multi-line highlighting. | Compare `render_diagnostic` with CLI emission; inspect secondary-label and Unicode spans. | SourceManager/end-to-end source-aware human + JSON diagnostics, including correct label/span rendering. | OPEN |
-| M1-005 | Major | Architecture | Type/semantic knowledge is independently reconstructed in TypeChecker and HIR lowering, risking semantic drift. HIR pattern bindings also lose their concrete type when MIR locals are created as `Unknown`. | Duplicate function/type/variant inference maps/substitution logic; `HirPatternKind::Bind` -> MIR local `Type::Unknown`. | Refactor to one checked semantic model feeding typed HIR/MIR and preserve checked binding types. | OPEN |
+| M1-005 | Major | Architecture | Type/semantic knowledge was independently reconstructed in TypeChecker and HIR lowering, and pattern-binding types were lost before MIR. | `match_binding_local_keeps_checked_payload_type`; `hir_preserves_checked_global_resolution_kind`; pre-fix `lower_hir.rs` contained independent function/struct/enum/type/generic inference tables. | `SemanticModel` now carries checker-authoritative types/symbols/resolutions; HIR lowering is structural-only; MIR consumes checked global kinds and binding types. | RESOLVED |
 | M1-006 | Major | Module system | Recursive namespace-rewrite loader needs broader duplicate/diamond/alias/canonicalization/symlink/platform coverage. Canonical paths are used only for cycle detection, not global module identity/deduplication, and imported nominal types/struct constructors are not expressible through current qualification rewriting. | Current loader recursively re-loads modules; `util.twice` works, but qualified imported type/constructor paths do not. | Define module identity/qualification semantics and add the full conformance/regression matrix. | OPEN |
 | M1-007 | Major | Entry point | `main` shape is not fully validated statically; invalid parameter shape can survive until interpreter execution. | `fn main(x: i64) {}` | Define executable entry-point contract and enforce in semantic analysis. | OPEN |
 | M1-008 | Major | Literals/parser | Oversized integer parsing uses `.parse::<i64>().ok()?` after consuming the token, so a range failure can produce no diagnostic and the parser can recover by silently dropping the statement. `i64::MIN` unary-minus handling, float non-finite policy, raw-newline strings, escapes, and Unicode identifier policy also need hardening. | oversized integer statement; `-9223372036854775808`; huge float; raw newline string; Unicode boundary cases. | Define M1 boundary semantics and stable diagnostics; never silently discard an invalid literal. | OPEN |
@@ -57,7 +57,7 @@ No repair is complete until its test has been observed failing for the intended 
 | M1-002 | pending | NOT RECORDED | NOT RECORDED | — |
 | M1-003 | pending | NOT RECORDED | NOT RECORDED | — |
 | M1-004 | pending | NOT RECORDED | NOT RECORDED | — |
-| M1-005 | pending | NOT RECORDED | NOT RECORDED | — |
+| M1-005 | `match_binding_local_keeps_checked_payload_type`; `hir_preserves_checked_global_resolution_kind` | CI 42354924948: MIR binding was `Unknown` vs expected `I64`; CI 42355127048: compile failed because HIR had no checked global-kind representation | CI 42354993528 green after binding-type preservation; CI 42355329658 green after checked global-kind handoff; CI 42355570648 green after full checker-authoritative SemanticModel refactor | `6832ec15764fbe12f131f42b5f70324b21aefdc4`, `7bee810aed2546087aa7d030855e9bdb181a3945`, `9d1b69fc48af8909acfb20fc8e86bd792bed5dd5`, final integration `b012b4e57bc67d2ee4413a06e9f563e713ba05f4` |
 | M1-006 | pending | NOT RECORDED | NOT RECORDED | — |
 | M1-007 | pending | NOT RECORDED | NOT RECORDED | — |
 | M1-008 | pending | NOT RECORDED | NOT RECORDED | — |
@@ -83,7 +83,7 @@ The 2026-11-07 review explicitly inspected:
 - Rust manifests, lockfile policy, toolchain file, and CI workflow;
 - README capability claims.
 
-No Critical finding was identified in this pass. Major findings M1-001 through M1-009 remain OPEN; M1-010 is RESOLVED with RED -> GREEN evidence. A fresh whole-branch adversarial review remains mandatory after all repairs.
+No Critical finding was identified in this pass. Major findings M1-001 through M1-004 and M1-006 through M1-009 remain OPEN; M1-005 and M1-010 are RESOLVED with RED -> GREEN evidence. A fresh whole-branch adversarial review remains mandatory after all repairs.
 
 ## 3.2 Execution rulings
 
@@ -133,7 +133,8 @@ None identified yet. Initial full M1 review completed 2026-11-07. Final whole-br
 
 ### Major
 
-M1-001 through M1-010 are OPEN.
+OPEN: M1-001, M1-002, M1-003, M1-004, M1-006, M1-007, M1-008, M1-009.  
+RESOLVED with retained RED -> GREEN evidence: M1-005, M1-010.
 
 ### Minor
 
@@ -141,7 +142,7 @@ Not yet fully catalogued.
 
 ## 10. Architecture Review
 
-Blocking issue: semantic duplication between checking and HIR lowering must be resolved or explicitly redesigned before later safety systems build on the compiler architecture.
+The M1 semantic-duplication blocker is resolved: TypeChecker is the semantic authority, `SemanticModel` retains checked facts, HIR lowering consumes those facts without maintaining its own function/type/enum/generic inference engine, and MIR consumes explicit checked global categories and pattern-binding types. A final whole-branch architecture review is still mandatory before Gate 1 PASS.
 
 ## 11. Security Review
 
@@ -167,7 +168,7 @@ All OPEN findings above are blockers, not accepted limitations.
 ## 15. Final Decision
 
 **Decision:** FAIL / ACTIVE  
-**Reason:** Gate 1 has known unresolved Major correctness/architecture findings and incomplete adversarial review.
+**Reason:** Gate 1 still has unresolved Major correctness findings and incomplete final verification; M1-005/M1-010 are resolved, but Gate 1 is not closeable yet.
 
 ### Owner authorization
 
