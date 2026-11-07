@@ -294,6 +294,7 @@ impl TypeChecker {
                 span,
             } => {
                 let value_ty = self.check_expr(value);
+                let diverges = value_ty.is_never();
                 let binding_ty = if let Some(annotation) = type_annotation {
                     let annotated = self.resolve_type_ref(annotation);
                     if !types_compatible(&annotated, &value_ty) {
@@ -308,7 +309,6 @@ impl TypeChecker {
                 } else {
                     value_ty
                 };
-                let diverges = value_ty.is_never();
                 match self
                     .scopes
                     .insert(name.clone(), binding_ty.clone(), *mutable, *span)
