@@ -1,0 +1,6 @@
+import util
+import util
+
+fn main() -> i64 {
+    util.twice(21)
+}

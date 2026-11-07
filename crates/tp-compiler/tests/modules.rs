@@ -53,3 +53,70 @@ fn import_cycles_are_rejected() {
         diagnostics
     );
 }
+
+#[test]
+fn repeated_identical_import_is_loaded_once() {
+    let path = fixture("modules_repeat_main.tp");
+    let report = Compiler::new().check_path(&path);
+    assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
+    let util_sources = report
+        .sources
+        .iter()
+        .filter(|source| source.name().ends_with("util.tp"))
+        .count();
+    assert_eq!(util_sources, 1);
+
+    let run = Compiler::new()
+        .run_path(&path)
+        .expect("repeated import should not duplicate declarations");
+    assert_eq!(run.value.as_i64(), Some(42));
+}
+
+#[test]
+fn same_module_can_have_multiple_aliases_without_reloading() {
+    let path = fixture("modules_two_aliases_main.tp");
+    let report = Compiler::new().check_path(&path);
+    assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
+    let util_sources = report
+        .sources
+        .iter()
+        .filter(|source| source.name().ends_with("util.tp"))
+        .count();
+    assert_eq!(util_sources, 1);
+
+    let run = Compiler::new()
+        .run_path(&path)
+        .expect("aliases should resolve to the same module identity");
+    assert_eq!(run.value.as_i64(), Some(42));
+}
+
+#[test]
+fn duplicate_import_alias_is_rejected_at_import_boundary() {
+    let report = Compiler::new().check_path(&fixture("modules_duplicate_alias_main.tp"));
+    assert!(
+        report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("duplicate import alias `helper`")),
+        "{:#?}",
+        report.diagnostics
+    );
+}
+
+#[test]
+fn diamond_import_loads_shared_module_once() {
+    let path = fixture("diamond_main.tp");
+    let report = Compiler::new().check_path(&path);
+    assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
+    let shared_sources = report
+        .sources
+        .iter()
+        .filter(|source| source.name().ends_with("diamond_shared.tp"))
+        .count();
+    assert_eq!(shared_sources, 1);
+
+    let run = Compiler::new()
+        .run_path(&path)
+        .expect("diamond import should execute");
+    assert_eq!(run.value.as_i64(), Some(42));
+}

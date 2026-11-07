@@ -1,0 +1,5 @@
+import diamond_shared
+
+fn left() -> i64 {
+    diamond_shared.value()
+}

@@ -1,0 +1,6 @@
+import diamond_left
+import diamond_right
+
+fn main() -> i64 {
+    diamond_left.left() + diamond_right.right()
+}
