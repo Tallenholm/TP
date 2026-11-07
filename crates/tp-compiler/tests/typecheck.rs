@@ -151,8 +151,7 @@ fn all_if_branches_may_return_explicitly() {
 
 #[test]
 fn nested_missing_return_path_is_rejected() {
-    let report =
-        check("fn broken(a: Bool, b: Bool) -> i64 { if a { if b { return 1; } } }");
+    let report = check("fn broken(a: Bool, b: Bool) -> i64 { if a { if b { return 1; } } }");
     assert!(
         report.diagnostics.iter().any(|diagnostic| diagnostic
             .message
