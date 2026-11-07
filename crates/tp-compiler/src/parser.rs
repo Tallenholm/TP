@@ -377,6 +377,23 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_unary(&mut self) -> Option<Expr> {
+        if self.at(TokenKind::Minus) && self.lookahead_kind(1) == TokenKind::Integer {
+            let integer = self.tokens.get(self.current + 1)?.clone();
+            if self
+                .text(&integer)
+                .parse::<u128>()
+                .ok()
+                .is_some_and(|magnitude| magnitude == (i64::MAX as u128) + 1)
+            {
+                let start = self.advance().span.start;
+                let integer = self.advance();
+                return Some(Expr {
+                    kind: ExprKind::Integer(i64::MIN),
+                    span: Span::new(self.source.id(), start, integer.span.end),
+                });
+            }
+        }
+
         let op = match self.current_kind() {
             TokenKind::Minus => Some(UnaryOp::Negate),
             TokenKind::Bang => Some(UnaryOp::Not),
@@ -479,14 +496,14 @@ impl<'a> Parser<'a> {
             TokenKind::Integer => {
                 self.advance();
                 Some(Expr {
-                    kind: ExprKind::Integer(self.text(&token).parse::<i64>().ok()?),
+                    kind: ExprKind::Integer(self.parse_integer_literal(&token)),
                     span: token.span,
                 })
             }
             TokenKind::Float => {
                 self.advance();
                 Some(Expr {
-                    kind: ExprKind::Float(self.text(&token).parse::<f64>().ok()?),
+                    kind: ExprKind::Float(self.parse_float_literal(&token)),
                     span: token.span,
                 })
             }
@@ -617,7 +634,7 @@ impl<'a> Parser<'a> {
             TokenKind::Integer => {
                 self.advance();
                 Some(Pattern {
-                    kind: PatternKind::Integer(self.text(&token).parse().ok()?),
+                    kind: PatternKind::Integer(self.parse_integer_literal(&token)),
                     span: token.span,
                 })
             }
@@ -638,6 +655,32 @@ impl<'a> Parser<'a> {
             _ => {
                 self.error_current("expected match pattern");
                 None
+            }
+        }
+    }
+
+    fn parse_integer_literal(&mut self, token: &Token) -> i64 {
+        match self.text(token).parse::<i64>() {
+            Ok(value) => value,
+            Err(_) => {
+                self.diagnostics.push(
+                    Diagnostic::error("TP-E0100", "integer literal out of range for i64")
+                        .with_primary(token.span),
+                );
+                0
+            }
+        }
+    }
+
+    fn parse_float_literal(&mut self, token: &Token) -> f64 {
+        match self.text(token).parse::<f64>() {
+            Ok(value) if value.is_finite() => value,
+            _ => {
+                self.diagnostics.push(
+                    Diagnostic::error("TP-E0100", "float literal must be finite f64")
+                        .with_primary(token.span),
+                );
+                0.0
             }
         }
     }
