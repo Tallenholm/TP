@@ -1,7 +1,7 @@
 use crate::{
     Block, Expr, ExprKind, FnDecl, HirBlock, HirExpr, HirExprKind, HirFunction, HirMatchArm,
     HirModule, HirParam, HirPattern, HirPatternKind, HirStmt, Item, Module, Pattern, PatternKind,
-    SemanticModel, Stmt, Type,
+    SemanticModel, Stmt,
 };
 
 pub struct HirLowerer<'a> {
