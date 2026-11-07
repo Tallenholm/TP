@@ -114,9 +114,9 @@ fn run_requires_main_before_interpreter_execution() {
         panic!("missing main must be a compile failure");
     };
     assert!(
-        diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.message.contains("missing executable entry point `main`")),
+        diagnostics.iter().any(|diagnostic| diagnostic
+            .message
+            .contains("missing executable entry point `main`")),
         "{diagnostics:#?}"
     );
 }
