@@ -53,10 +53,7 @@ fn generated_module_chain_loads_and_executes_deterministically() {
         .duration_since(UNIX_EPOCH)
         .expect("system clock")
         .as_nanos();
-    let dir = std::env::temp_dir().join(format!(
-        "tp-module-chain-{}-{nonce}",
-        std::process::id()
-    ));
+    let dir = std::env::temp_dir().join(format!("tp-module-chain-{}-{nonce}", std::process::id()));
     fs::create_dir_all(&dir).expect("create temp module-chain directory");
 
     const MODULE_COUNT: usize = 16;
@@ -74,11 +71,8 @@ fn generated_module_chain_loads_and_executes_deterministically() {
     }
 
     let main = dir.join("main.tp");
-    fs::write(
-        &main,
-        "import m0\nfn main() -> i64 { m0.value() }\n",
-    )
-    .expect("write generated entry module");
+    fs::write(&main, "import m0\nfn main() -> i64 { m0.value() }\n")
+        .expect("write generated entry module");
 
     let compiler = Compiler::new();
     let checked = compiler.check_path(&main);
