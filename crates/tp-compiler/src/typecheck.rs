@@ -22,7 +22,6 @@ struct TypeDeclInfo {
 struct StructInfo {
     type_params: Vec<String>,
     fields: HashMap<String, (Type, Span)>,
-    span: Span,
 }
 
 #[derive(Debug, Clone)]
@@ -38,7 +37,6 @@ struct VariantInfo {
 struct EnumInfo {
     type_params: Vec<String>,
     variants: HashMap<String, VariantInfo>,
-    span: Span,
 }
 
 #[derive(Debug, Default)]
@@ -160,7 +158,6 @@ impl TypeChecker {
                         StructInfo {
                             type_params: decl.type_params.clone(),
                             fields,
-                            span: decl.span,
                         },
                     );
                 }
@@ -216,7 +213,6 @@ impl TypeChecker {
                         EnumInfo {
                             type_params: decl.type_params.clone(),
                             variants,
-                            span: decl.span,
                         },
                     );
                 }
