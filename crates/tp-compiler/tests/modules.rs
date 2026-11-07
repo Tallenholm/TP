@@ -168,10 +168,8 @@ fn symlinked_imports_share_one_canonical_module_identity() {
         .duration_since(UNIX_EPOCH)
         .expect("system clock")
         .as_nanos();
-    let dir = std::env::temp_dir().join(format!(
-        "tp-module-symlink-{}-{nonce}",
-        std::process::id()
-    ));
+    let dir =
+        std::env::temp_dir().join(format!("tp-module-symlink-{}-{nonce}", std::process::id()));
     fs::create_dir_all(&dir).expect("create temp fixture directory");
 
     let real = dir.join("real.tp");
