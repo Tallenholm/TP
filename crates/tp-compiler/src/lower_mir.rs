@@ -228,10 +228,15 @@ impl FunctionBuilder {
                 op: BinaryOp::And | BinaryOp::Or,
                 left,
                 right,
-            } => self.lower_logical(expr, left, right, match &expr.kind {
-                HirExprKind::Binary { op, .. } => *op,
-                _ => unreachable!(),
-            }),
+            } => self.lower_logical(
+                expr,
+                left,
+                right,
+                match &expr.kind {
+                    HirExprKind::Binary { op, .. } => *op,
+                    _ => unreachable!(),
+                },
+            ),
             HirExprKind::Binary { op, left, right } => {
                 let left = self.lower_expr(left);
                 let right = self.lower_expr(right);
