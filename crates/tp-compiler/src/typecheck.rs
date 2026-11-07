@@ -1169,9 +1169,8 @@ impl TypeChecker {
                 }
             }
             Less | LessEqual | Greater | GreaterEqual => {
-                let comparable = left.is_unknown()
-                    || right.is_unknown()
-                    || (left.is_numeric() && left == right);
+                let comparable =
+                    left.is_unknown() || right.is_unknown() || (left.is_numeric() && left == right);
                 if !comparable {
                     self.diagnostics.push(
                         Diagnostic::error(
