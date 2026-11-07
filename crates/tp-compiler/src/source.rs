@@ -1,4 +1,7 @@
-use std::{collections::BTreeMap, sync::atomic::{AtomicU32, Ordering}};
+use std::{
+    collections::BTreeMap,
+    sync::atomic::{AtomicU32, Ordering},
+};
 static NEXT_SOURCE_ID: AtomicU32 = AtomicU32::new(1);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -111,7 +114,6 @@ impl SourceFile {
         Some(line)
     }
 }
-
 
 #[derive(Debug, Clone, Default)]
 pub struct SourceManager {

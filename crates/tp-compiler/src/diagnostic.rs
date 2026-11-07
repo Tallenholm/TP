@@ -85,10 +85,7 @@ pub fn render_diagnostic(source: &SourceFile, diagnostic: &Diagnostic) -> String
     render_diagnostic_with_sources(&sources, diagnostic)
 }
 
-pub fn render_diagnostic_with_sources(
-    sources: &SourceManager,
-    diagnostic: &Diagnostic,
-) -> String {
+pub fn render_diagnostic_with_sources(sources: &SourceManager, diagnostic: &Diagnostic) -> String {
     let mut out = format!(
         "{}[{}]: {}\n",
         diagnostic.severity, diagnostic.code, diagnostic.message

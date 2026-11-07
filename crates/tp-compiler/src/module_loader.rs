@@ -6,7 +6,8 @@ use std::{
 
 use crate::{
     Block, Diagnostic, Expr, ExprKind, FnDecl, ImportDecl, Item, Lexer, MatchArm, Module, Param,
-    Parser, Pattern, PatternKind, SourceFile, SourceManager, Stmt, StructDecl, TypeRef, VariantDecl,
+    Parser, Pattern, PatternKind, SourceFile, SourceManager, Stmt, StructDecl, TypeRef,
+    VariantDecl,
 };
 
 pub struct ModuleLoader;

@@ -84,11 +84,7 @@ fn main() -> ExitCode {
     }
 }
 
-fn emit_diagnostics(
-    diagnostics: &[Diagnostic],
-    sources: &SourceManager,
-    format: DiagnosticFormat,
-) {
+fn emit_diagnostics(diagnostics: &[Diagnostic], sources: &SourceManager, format: DiagnosticFormat) {
     for diagnostic in diagnostics {
         match format {
             DiagnosticFormat::Human => {
