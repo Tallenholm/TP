@@ -157,11 +157,7 @@ impl<'a> Lexer<'a> {
                     self.advance();
                     diagnostics.push(
                         Diagnostic::error("TP-E0001", "newline in string literal")
-                            .with_primary(Span::new(
-                                self.source.id(),
-                                newline_start,
-                                self.offset,
-                            )),
+                            .with_primary(Span::new(self.source.id(), newline_start, self.offset)),
                     );
 
                     while let Some(next) = self.current() {
