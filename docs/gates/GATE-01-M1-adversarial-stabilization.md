@@ -109,15 +109,23 @@ CI 42410172728 is the current reproducibility baseline: rustc 1.85.0, cargo 1.85
 
 ## 6. Conformance Evidence
 
-Gate 1 requires regression/adversarial coverage. Gate 2 will create the full M1 semantic-freeze conformance corpus.
+Gate 1 regression/adversarial coverage now exercises every resolved Major finding M1-001 through M1-010, including success, failure, recovery, boundary, module, MIR-shape, runtime, and diagnostic behavior. Gate 2 remains responsible for the independent semantic-freeze conformance corpus.
 
-**State:** INCOMPLETE.
+**State:** SATISFIED FOR GATE 1.
 
 ## 7. Fuzz / Property / Stress Evidence
 
-Determine the Gate 1 minimum campaign during detailed stabilization planning. Parser/module/control-flow property tests should be considered where they materially improve confidence.
+Gate 1 uses deterministic stress/recovery coverage rather than claiming a full fuzzing campaign:
 
-**State:** NOT YET SATISFIED.
+- a generated 512-step mutable/arithmetic program executes three times with the same result;
+- a curated malformed-source corpus exercises lexer/parser/type recovery and must always produce diagnostics without panicking;
+- a generated 16-module import chain is checked and executed three times, validating recursive loading and deterministic runtime behavior.
+
+These tests live in `crates/tp-compiler/tests/stress.rs` and passed with the complete workspace under pinned Rust 1.85.0 in CI **42410423519**.
+
+A broader randomized/property/fuzz campaign belongs to later dedicated hardening unless the final Gate 1 review discovers a specific need.
+
+**State:** SATISFIED FOR GATE 1.
 
 ## 8. Performance Evidence
 
@@ -161,7 +169,7 @@ Repository governance now explicitly marks Gate 1 as active and M2+ as locked. L
 
 ## 14. Known Limitations
 
-No Critical/Major finding is currently open. Remaining Gate 1 work is reproducibility, final verification/conformance/stress evidence, documentation audit, and whole-branch adversarial review. M1 module limitations accepted for this gate are documented in `docs/M1_MODULE_SEMANTICS.md` and are subject to Gate 2 semantic freeze.
+No Critical/Major finding is currently open. Remaining Gate 1 work is documentation audit, final whole-branch adversarial review, and fresh final verification/CI. M1 module limitations accepted for this gate are documented in `docs/M1_MODULE_SEMANTICS.md` and are subject to Gate 2 semantic freeze.
 
 ## 15. Final Decision
 

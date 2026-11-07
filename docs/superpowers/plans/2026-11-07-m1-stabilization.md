@@ -239,7 +239,7 @@ No Gate 2 semantic-freeze work is performed here.
 **Final commands:**
 ```bash
 cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
+cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 ```
 
