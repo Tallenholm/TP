@@ -189,6 +189,12 @@ impl TypeChecker {
                 span: function.span,
             };
 
+            self.semantic.record_function(
+                function.name.clone(),
+                sig.params.clone(),
+                sig.result.clone(),
+            );
+
             if let Some(variant) = self.variants.get(&function.name) {
                 self.diagnostics.push(
                     Diagnostic::error(
@@ -230,15 +236,23 @@ impl TypeChecker {
         self.expected_return = sig.result.clone();
         self.scopes.push();
         for (param, ty) in function.params.iter().zip(sig.params.iter()) {
-            if self
+            match self
                 .scopes
                 .insert(param.name.clone(), ty.clone(), false, param.span)
-                .is_err()
             {
-                self.diagnostics.push(
-                    Diagnostic::error("TP-E0200", format!("duplicate parameter `{}`", param.name))
+                Ok(symbol) => {
+                    self.semantic
+                        .record_binding(param.span, symbol, ty.clone());
+                }
+                Err(_) => {
+                    self.diagnostics.push(
+                        Diagnostic::error(
+                            "TP-E0200",
+                            format!("duplicate parameter `{}`", param.name),
+                        )
                         .with_primary(param.span),
-                );
+                    );
+                }
             }
         }
 
@@ -265,6 +279,7 @@ impl TypeChecker {
             result = self.check_statement(statement);
         }
         self.scopes.pop();
+        self.semantic.record_block_type(block.span, result.clone());
         result
     }
 
@@ -292,15 +307,20 @@ impl TypeChecker {
                 } else {
                     value_ty
                 };
-                if self
+                match self
                     .scopes
-                    .insert(name.clone(), binding_ty, *mutable, *span)
-                    .is_err()
+                    .insert(name.clone(), binding_ty.clone(), *mutable, *span)
                 {
-                    self.diagnostics.push(
-                        Diagnostic::error("TP-E0200", format!("duplicate binding `{name}`"))
-                            .with_primary(*span),
-                    );
+                    Ok(symbol) => {
+                        self.semantic
+                            .record_binding(*span, symbol, binding_ty);
+                    }
+                    Err(_) => {
+                        self.diagnostics.push(
+                            Diagnostic::error("TP-E0200", format!("duplicate binding `{name}`"))
+                                .with_primary(*span),
+                        );
+                    }
                 }
                 Type::Unit
             }
@@ -331,14 +351,21 @@ impl TypeChecker {
     }
 
     fn check_expr(&mut self, expr: &Expr) -> Type {
+        let ty = self.check_expr_inner(expr);
+        self.semantic.record_expr_type(expr.span, ty.clone());
+        ty
+    }
+
+    fn check_expr_inner(&mut self, expr: &Expr) -> Type {
         match &expr.kind {
             ExprKind::Integer(_) => Type::I64,
             ExprKind::Float(_) => Type::F64,
             ExprKind::String(_) => Type::String,
             ExprKind::Bool(_) => Type::Bool,
             ExprKind::Name(name) => {
-                if let Some(binding) = self.scopes.get(name) {
-                    return binding.ty.clone();
+                if let Some(binding) = self.scopes.get(name).cloned() {
+                    self.semantic.record_local_use(expr.span, binding.id);
+                    return binding.ty;
                 }
                 if let Some(function) = self.functions.get(name).cloned() {
                     self.semantic
@@ -402,6 +429,7 @@ impl TypeChecker {
                     self.unknown_name(expr.span, target);
                     return Type::Unknown;
                 };
+                self.semantic.record_local_use(expr.span, binding.id);
                 if !binding.mutable {
                     self.diagnostics.push(
                         Diagnostic::error(
@@ -631,18 +659,23 @@ impl TypeChecker {
                     }
                     let _ = args;
                 }
-                if self
+                match self
                     .scopes
                     .insert(name.clone(), target.clone(), false, pattern.span)
-                    .is_err()
                 {
-                    self.diagnostics.push(
-                        Diagnostic::error(
-                            "TP-E0200",
-                            format!("duplicate pattern binding `{name}`"),
-                        )
-                        .with_primary(pattern.span),
-                    );
+                    Ok(symbol) => {
+                        self.semantic
+                            .record_binding(pattern.span, symbol, target.clone());
+                    }
+                    Err(_) => {
+                        self.diagnostics.push(
+                            Diagnostic::error(
+                                "TP-E0200",
+                                format!("duplicate pattern binding `{name}`"),
+                            )
+                            .with_primary(pattern.span),
+                        );
+                    }
                 }
                 PatternCoverage::Other
             }
@@ -729,6 +762,13 @@ impl TypeChecker {
             if name == "print" {
                 self.semantic
                     .record_global(callee.span, HirGlobalKind::Builtin);
+                self.semantic.record_expr_type(
+                    callee.span,
+                    Type::Function {
+                        params: vec![Type::Unknown],
+                        result: Box::new(Type::Unit),
+                    },
+                );
                 for arg in args {
                     self.check_expr(arg);
                 }
@@ -746,11 +786,25 @@ impl TypeChecker {
             if let Some(variant) = self.variants.get(name).cloned() {
                 self.semantic
                     .record_global(callee.span, HirGlobalKind::Variant);
+                self.semantic.record_expr_type(
+                    callee.span,
+                    Type::Function {
+                        params: variant.payload.clone(),
+                        result: Box::new(enum_instance(&variant, &HashMap::new())),
+                    },
+                );
                 return self.check_variant_constructor(span, &variant, args);
             }
             if let Some(sig) = self.functions.get(name).cloned() {
                 self.semantic
                     .record_global(callee.span, HirGlobalKind::Function);
+                self.semantic.record_expr_type(
+                    callee.span,
+                    Type::Function {
+                        params: sig.params.clone(),
+                        result: Box::new(sig.result.clone()),
+                    },
+                );
                 if args.len() != sig.params.len() {
                     self.diagnostics.push(
                         Diagnostic::error(
