@@ -312,8 +312,7 @@ impl TypeChecker {
                     .insert(name.clone(), binding_ty.clone(), *mutable, *span)
                 {
                     Ok(symbol) => {
-                        self.semantic
-                            .record_binding(*span, symbol, binding_ty);
+                        self.semantic.record_binding(*span, symbol, binding_ty);
                     }
                     Err(_) => {
                         self.diagnostics.push(
