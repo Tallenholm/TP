@@ -119,3 +119,15 @@ fn diamond_import_loads_shared_module_once() {
         .expect("diamond import should execute");
     assert_eq!(run.value.as_i64(), Some(42));
 }
+
+#[test]
+fn imported_nominal_types_struct_literals_and_enum_patterns_work() {
+    let path = fixture("imported_types_main.tp");
+    let report = Compiler::new().check_path(&path);
+    assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
+
+    let run = Compiler::new()
+        .run_path(&path)
+        .expect("qualified imported nominal types should execute");
+    assert_eq!(run.value.as_i64(), Some(42));
+}
