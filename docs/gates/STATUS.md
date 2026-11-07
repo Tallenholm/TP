@@ -2,11 +2,11 @@
 
 **This file is authoritative for what work may currently proceed.**
 
-Last updated: 2026-08-12
+Last updated: 2026-11-07
 
 | Gate | Name | State | Notes |
 |---|---|---|---|
-| 0 | Governance, Repository Control, and IP | ACTIVE | Public-repository decision, proprietary policy, ADR process, dependency-license audit, and automated Gate Policy are complete. Only verified server-side protection of `main` remains. |
+| 0 | Governance, Repository Control, and IP | PASSED | Governance/IP/repository policy complete. Owner-managed `main` without mandatory server-side branch protection is explicitly accepted in ADR-0002. |
 | 1 | M1 Adversarial Stabilization | ACTIVE | Current M1 implementation is under adversarial review. Known semantic defects must be repaired before this gate can pass. |
 | 2 | M1 Semantic Freeze | LOCKED | Depends on Gate 1 PASSED. |
 | 3 | Compiler Architecture Foundation | LOCKED | Depends on Gate 2 PASSED. |
@@ -30,20 +30,12 @@ Last updated: 2026-08-12
 
 ## Current allowed work
 
-Only work necessary to complete Gate 0 or Gate 1 is authorized.
+Gate 0 is PASSED. Only Gate 1 implementation/review work is currently authorized; Gate 2 and later gates remain LOCKED.
 
-### Remaining Gate 0 work
-
-The sole unresolved Gate 0 requirement is **G0-R13: server-side protection of `main`**. See:
-
-- `docs/gates/GATE-00-governance.md`
-- `docs/gates/GATE-00-MANUAL-BRANCH-PROTECTION.md`
-
-The repository intentionally remains public under `docs/decisions/ADR-0001-public-repository-for-ci.md` so TP can make aggressive use of public-repository GitHub-hosted CI while retaining proprietary licensing.
+The repository intentionally remains public under `docs/decisions/ADR-0001-public-repository-for-ci.md` so TP can make aggressive use of public-repository GitHub-hosted CI while retaining proprietary licensing. Under `docs/decisions/ADR-0002-owner-managed-main.md`, server-side branch protection is optional defense in depth and is not a prerequisite for continuing.
 
 Examples of allowed work:
 
-- completing/validating `main` protection;
 - completing the adversarial M1 review;
 - writing regression tests for M1 defects;
 - repairing M1 correctness/semantic/diagnostic/module/architecture issues required by Gate 1;
