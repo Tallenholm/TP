@@ -256,10 +256,7 @@ impl TypeChecker {
         }
 
         let body_ty = self.check_block(&function.body);
-        if sig.result != Type::Unit
-            && !contains_explicit_return(&function.body)
-            && !types_compatible(&sig.result, &body_ty)
-        {
+        if sig.result != Type::Unit && !types_compatible(&sig.result, &body_ty) {
             self.type_mismatch(
                 function.body.span,
                 &sig.result,
@@ -274,8 +271,13 @@ impl TypeChecker {
     fn check_block(&mut self, block: &Block) -> Type {
         self.scopes.push();
         let mut result = Type::Unit;
+        let mut diverged = false;
         for statement in &block.statements {
-            result = self.check_statement(statement);
+            let statement_ty = self.check_statement(statement);
+            if !diverged {
+                diverged = statement_ty.is_never();
+                result = statement_ty;
+            }
         }
         self.scopes.pop();
         self.semantic.record_block_type(block.span, result.clone());
@@ -306,6 +308,7 @@ impl TypeChecker {
                 } else {
                     value_ty
                 };
+                let diverges = value_ty.is_never();
                 match self
                     .scopes
                     .insert(name.clone(), binding_ty.clone(), *mutable, *span)
@@ -320,7 +323,7 @@ impl TypeChecker {
                         );
                     }
                 }
-                Type::Unit
+                if diverges { Type::Never } else { Type::Unit }
             }
             Stmt::Return { value, span } => {
                 let actual = value
@@ -331,7 +334,7 @@ impl TypeChecker {
                 if !types_compatible(&expected, &actual) {
                     self.type_mismatch(*span, &expected, &actual, "return type mismatch");
                 }
-                Type::Unit
+                Type::Never
             }
             Stmt::While {
                 condition, body, ..
@@ -339,11 +342,21 @@ impl TypeChecker {
                 let condition_ty = self.check_expr(condition);
                 self.require_bool(condition.span, &condition_ty, "while condition");
                 self.check_block(body);
-                Type::Unit
+                if condition_ty.is_never() {
+                    Type::Never
+                } else {
+                    Type::Unit
+                }
             }
             Stmt::Expr { expr, terminated } => {
                 let ty = self.check_expr(expr);
-                if *terminated { Type::Unit } else { ty }
+                if ty.is_never() {
+                    Type::Never
+                } else if *terminated {
+                    Type::Unit
+                } else {
+                    ty
+                }
             }
         }
     }
@@ -393,6 +406,9 @@ impl TypeChecker {
             }
             ExprKind::Unary { op, expr: inner } => {
                 let inner_ty = self.check_expr(inner);
+                if inner_ty.is_never() {
+                    return Type::Never;
+                }
                 match op {
                     UnaryOp::Negate => {
                         if !inner_ty.is_unknown() && !inner_ty.is_numeric() {
@@ -446,7 +462,11 @@ impl TypeChecker {
                         "assignment type mismatch",
                     );
                 }
-                binding.ty
+                if value_ty.is_never() {
+                    Type::Never
+                } else {
+                    binding.ty
+                }
             }
             ExprKind::Call { callee, args } => self.check_call(expr.span, callee, args),
             ExprKind::If {
@@ -457,10 +477,15 @@ impl TypeChecker {
                 let condition_ty = self.check_expr(condition);
                 self.require_bool(condition.span, &condition_ty, "if condition");
                 let then_ty = self.check_block(then_branch);
-                let Some(else_branch) = else_branch else {
+                let else_ty = else_branch
+                    .as_ref()
+                    .map(|branch| self.check_block(branch));
+                if condition_ty.is_never() {
+                    return Type::Never;
+                }
+                let Some(else_ty) = else_ty else {
                     return Type::Unit;
                 };
-                let else_ty = self.check_block(else_branch);
                 self.unify_branch_types(expr.span, then_ty, else_ty, "if branches")
             }
             ExprKind::StructLiteral { type_name, fields } => {
@@ -545,6 +570,9 @@ impl TypeChecker {
 
     fn check_field(&mut self, span: Span, base: &Expr, field: &str) -> Type {
         let base_ty = self.check_expr(base);
+        if base_ty.is_never() {
+            return Type::Never;
+        }
         let Type::Named { name, args } = &base_ty else {
             if !base_ty.is_unknown() {
                 self.diagnostics.push(
@@ -582,6 +610,7 @@ impl TypeChecker {
 
     fn check_match(&mut self, span: Span, value: &Expr, arms: &[MatchArm]) -> Type {
         let value_ty = self.check_expr(value);
+        let value_diverges = value_ty.is_never();
         let enum_info = match &value_ty {
             Type::Named { name, .. } => self.enums.get(name).cloned(),
             _ => None,
@@ -636,7 +665,11 @@ impl TypeChecker {
             }
         }
 
-        result.unwrap_or(Type::Unit)
+        if value_diverges {
+            Type::Never
+        } else {
+            result.unwrap_or(Type::Unit)
+        }
     }
 
     fn check_pattern(&mut self, pattern: &Pattern, target: &Type) -> PatternCoverage {
@@ -767,8 +800,9 @@ impl TypeChecker {
                         result: Box::new(Type::Unit),
                     },
                 );
+                let mut diverges = false;
                 for arg in args {
-                    self.check_expr(arg);
+                    diverges |= self.check_expr(arg).is_never();
                 }
                 if args.len() != 1 {
                     self.diagnostics.push(
@@ -779,7 +813,7 @@ impl TypeChecker {
                         .with_primary(span),
                     );
                 }
-                return Type::Unit;
+                return if diverges { Type::Never } else { Type::Unit };
             }
             if let Some(variant) = self.variants.get(name).cloned() {
                 self.semantic
@@ -816,8 +850,10 @@ impl TypeChecker {
                         .with_primary(span),
                     );
                 }
+                let mut diverges = false;
                 for (index, arg) in args.iter().enumerate() {
                     let actual = self.check_expr(arg);
+                    diverges |= actual.is_never();
                     if let Some(expected) = sig.params.get(index) {
                         if !types_compatible(expected, &actual) {
                             self.type_mismatch(
@@ -829,11 +865,12 @@ impl TypeChecker {
                         }
                     }
                 }
-                return sig.result;
+                return if diverges { Type::Never } else { sig.result };
             }
         }
 
         let callee_ty = self.check_expr(callee);
+        let callee_diverges = callee_ty.is_never();
         match callee_ty {
             Type::Function { params, result } => {
                 if args.len() != params.len() {
@@ -849,8 +886,10 @@ impl TypeChecker {
                         .with_primary(span),
                     );
                 }
+                let mut diverges = callee_diverges;
                 for (index, arg) in args.iter().enumerate() {
                     let actual = self.check_expr(arg);
+                    diverges |= actual.is_never();
                     if let Some(expected) = params.get(index) {
                         if !types_compatible(expected, &actual) {
                             self.type_mismatch(
@@ -862,7 +901,13 @@ impl TypeChecker {
                         }
                     }
                 }
-                *result
+                if diverges { Type::Never } else { *result }
+            }
+            Type::Never => {
+                for arg in args {
+                    self.check_expr(arg);
+                }
+                Type::Never
             }
             Type::Unknown => {
                 for arg in args {
@@ -907,8 +952,10 @@ impl TypeChecker {
             );
         }
         let mut substitution = HashMap::new();
+        let mut diverges = false;
         for (index, arg) in args.iter().enumerate() {
             let actual = self.check_expr(arg);
+            diverges |= actual.is_never();
             if let Some(template) = variant.payload.get(index) {
                 infer_type_params(template, &actual, &variant.type_params, &mut substitution);
                 let expected = substitute_type(template, &substitution);
@@ -922,11 +969,18 @@ impl TypeChecker {
                 }
             }
         }
-        enum_instance(variant, &substitution)
+        if diverges {
+            Type::Never
+        } else {
+            enum_instance(variant, &substitution)
+        }
     }
 
     fn check_binary(&mut self, op: BinaryOp, span: Span, left: Type, right: Type) -> Type {
         use BinaryOp::*;
+        if left.is_never() || right.is_never() {
+            return Type::Never;
+        }
         match op {
             Add | Subtract | Multiply | Divide | Remainder => {
                 if left.is_unknown() || right.is_unknown() {
@@ -1021,7 +1075,7 @@ impl TypeChecker {
     }
 
     fn require_bool(&mut self, span: Span, ty: &Type, context: &str) {
-        if !ty.is_unknown() && *ty != Type::Bool {
+        if !ty.is_unknown() && !ty.is_never() && *ty != Type::Bool {
             self.diagnostics.push(
                 Diagnostic::error(
                     "TP-E0300",
@@ -1143,7 +1197,7 @@ fn substitute_type(template: &Type, substitution: &HashMap<String, Type>) -> Typ
 
 fn types_compatible(expected: &Type, actual: &Type) -> bool {
     match (expected, actual) {
-        (Type::Unknown, _) | (_, Type::Unknown) => true,
+        (Type::Unknown, _) | (_, Type::Unknown) | (Type::Never, _) | (_, Type::Never) => true,
         (
             Type::Named {
                 name: expected_name,
@@ -1184,8 +1238,8 @@ fn types_compatible(expected: &Type, actual: &Type) -> bool {
 
 fn more_specific_type(left: Type, right: Type) -> Type {
     match (&left, &right) {
-        (Type::Unknown, _) => right,
-        (_, Type::Unknown) => left,
+        (Type::Unknown, _) | (Type::Never, _) => right,
+        (_, Type::Unknown) | (_, Type::Never) => left,
         (
             Type::Named {
                 name: left_name,
@@ -1208,26 +1262,3 @@ fn more_specific_type(left: Type, right: Type) -> Type {
     }
 }
 
-fn contains_explicit_return(block: &Block) -> bool {
-    block.statements.iter().any(|statement| match statement {
-        Stmt::Return { .. } => true,
-        Stmt::While { body, .. } => contains_explicit_return(body),
-        Stmt::Expr { expr, .. } => expr_contains_return(expr),
-        Stmt::Let { value, .. } => expr_contains_return(value),
-    })
-}
-
-fn expr_contains_return(expr: &Expr) -> bool {
-    match &expr.kind {
-        ExprKind::If {
-            then_branch,
-            else_branch,
-            ..
-        } => {
-            contains_explicit_return(then_branch)
-                || else_branch.as_ref().is_some_and(contains_explicit_return)
-        }
-        ExprKind::Match { arms, .. } => arms.iter().any(|arm| expr_contains_return(&arm.body)),
-        _ => false,
-    }
-}

@@ -3,6 +3,7 @@ use std::fmt;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Type {
     Unknown,
+    Never,
     Unit,
     Bool,
     I64,
@@ -26,12 +27,17 @@ impl Type {
     pub const fn is_unknown(&self) -> bool {
         matches!(self, Self::Unknown)
     }
+
+    pub const fn is_never(&self) -> bool {
+        matches!(self, Self::Never)
+    }
 }
 
 impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Unknown => f.write_str("<unknown>"),
+            Self::Never => f.write_str("<never>"),
             Self::Unit => f.write_str("Unit"),
             Self::Bool => f.write_str("Bool"),
             Self::I64 => f.write_str("i64"),
