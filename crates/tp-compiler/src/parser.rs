@@ -215,7 +215,13 @@ impl<'a> Parser<'a> {
     fn parse_type_ref(&mut self) -> Option<TypeRef> {
         let name_token = self.expect(TokenKind::Identifier, "expected type name")?;
         let start = name_token.span.start;
-        let name = self.text(&name_token).to_owned();
+        let mut name = self.text(&name_token).to_owned();
+        while self.consume(TokenKind::Dot) {
+            let part = self.expect(TokenKind::Identifier, "expected type name after `.`")?;
+            name.push('.');
+            name.push_str(self.text(&part));
+        }
+
         let mut args = Vec::new();
         if self.consume(TokenKind::Less) {
             if !self.at(TokenKind::Greater) {
@@ -453,10 +459,9 @@ impl<'a> Parser<'a> {
                 continue;
             }
             if self.looks_like_struct_literal() {
-                let ExprKind::Name(type_name) = &expr.kind else {
+                let Some(type_name) = Self::qualified_expr_name(&expr) else {
                     break;
                 };
-                let type_name = type_name.clone();
                 let start = expr.span.start;
                 self.expect(TokenKind::LBrace, "expected `{` in struct literal")?;
                 let mut fields = Vec::new();
@@ -488,6 +493,19 @@ impl<'a> Parser<'a> {
         self.at(TokenKind::LBrace)
             && self.lookahead_kind(1) == TokenKind::Identifier
             && self.lookahead_kind(2) == TokenKind::Colon
+    }
+
+    fn qualified_expr_name(expr: &Expr) -> Option<String> {
+        match &expr.kind {
+            ExprKind::Name(name) => Some(name.clone()),
+            ExprKind::Field { base, field } => {
+                let mut name = Self::qualified_expr_name(base)?;
+                name.push('.');
+                name.push_str(field);
+                Some(name)
+            }
+            _ => None,
+        }
     }
 
     fn parse_primary(&mut self) -> Option<Expr> {
@@ -602,7 +620,16 @@ impl<'a> Parser<'a> {
         match token.kind {
             TokenKind::Identifier => {
                 self.advance();
-                let name = self.text(&token).to_owned();
+                let mut name = self.text(&token).to_owned();
+                let mut end = token.span.end;
+                while self.consume(TokenKind::Dot) {
+                    let part =
+                        self.expect(TokenKind::Identifier, "expected pattern name after `.`")?;
+                    name.push('.');
+                    name.push_str(self.text(&part));
+                    end = part.span.end;
+                }
+
                 if name == "_" {
                     return Some(Pattern {
                         kind: PatternKind::Wildcard,
@@ -628,7 +655,7 @@ impl<'a> Parser<'a> {
                 }
                 Some(Pattern {
                     kind: PatternKind::Name(name),
-                    span: token.span,
+                    span: Span::new(self.source.id(), token.span.start, end),
                 })
             }
             TokenKind::Integer => {

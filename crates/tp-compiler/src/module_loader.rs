@@ -308,6 +308,8 @@ impl NamespaceRewriter {
             .collect();
         if self.structs.contains(&ty.name) || self.enums.contains(&ty.name) {
             ty.name = self.declaration_name(&ty.name);
+        } else if let Some(imported) = self.rewrite_imported_name(&ty.name) {
+            ty.name = imported;
         }
         ty
     }
@@ -405,7 +407,7 @@ impl NamespaceRewriter {
                 type_name: if self.structs.contains(&type_name) {
                     self.declaration_name(&type_name)
                 } else {
-                    type_name
+                    self.rewrite_imported_name(&type_name).unwrap_or(type_name)
                 },
                 fields: fields
                     .into_iter()
@@ -454,6 +456,8 @@ impl NamespaceRewriter {
             PatternKind::Name(name) => {
                 if self.variants.contains(&name) {
                     PatternKind::Name(self.declaration_name(&name))
+                } else if let Some(imported) = self.rewrite_imported_name(&name) {
+                    PatternKind::Name(imported)
                 } else {
                     self.bind(&name);
                     PatternKind::Name(name)
@@ -466,7 +470,7 @@ impl NamespaceRewriter {
                 name: if self.variants.contains(&name) {
                     self.declaration_name(&name)
                 } else {
-                    name
+                    self.rewrite_imported_name(&name).unwrap_or(name)
                 },
                 args: args
                     .into_iter()
@@ -476,6 +480,12 @@ impl NamespaceRewriter {
         };
         pattern.kind = kind;
         pattern
+    }
+
+    fn rewrite_imported_name(&self, name: &str) -> Option<String> {
+        let (alias, member) = name.split_once('.')?;
+        let namespace = self.imports.get(alias)?;
+        Some(format!("{namespace}.{member}"))
     }
 
     fn declaration_name(&self, name: &str) -> String {
