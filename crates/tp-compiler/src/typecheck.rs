@@ -131,11 +131,10 @@ impl TypeChecker {
         for item in &module.items {
             match item {
                 Item::Struct(decl) => {
-                    if self
-                        .type_decls
-                        .get(&decl.name)
-                        .is_none_or(|info| info.span != decl.span)
-                    {
+                    if !matches!(
+                        self.type_decls.get(&decl.name),
+                        Some(info) if info.span == decl.span
+                    ) {
                         continue;
                     }
 
@@ -166,16 +165,14 @@ impl TypeChecker {
                     );
                 }
                 Item::Enum(decl) => {
-                    if self
-                        .type_decls
-                        .get(&decl.name)
-                        .is_none_or(|info| info.span != decl.span)
-                    {
+                    if !matches!(
+                        self.type_decls.get(&decl.name),
+                        Some(info) if info.span == decl.span
+                    ) {
                         continue;
                     }
 
-                    let type_params: HashSet<String> =
-                        decl.type_params.iter().cloned().collect();
+                    let type_params: HashSet<String> = decl.type_params.iter().cloned().collect();
                     let mut variants = HashMap::new();
                     for variant in &decl.variants {
                         let info = VariantInfo {
