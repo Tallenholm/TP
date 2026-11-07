@@ -164,6 +164,13 @@ impl TypeChecker {
             let Item::Function(function) = item else {
                 continue;
             };
+            if function.name == "print" {
+                self.diagnostics.push(
+                    Diagnostic::error("TP-E0200", "`print` is a reserved builtin name")
+                        .with_primary(function.span),
+                );
+            }
+
             let sig = FunctionSig {
                 params: function
                     .params
