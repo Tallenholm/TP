@@ -25,7 +25,7 @@
 | G1-R10 | Harden module graph/path/canonicalization semantics | PASS | Canonical-path module identity now deduplicates repeated/diamond/symlink imports; qualified imported nominal types/struct literals/enum constructors/patterns work; deterministic lowering and host-filesystem behavior are tested/documented. |
 | G1-R11 | Reproducible locked verification policy | PASS | `rust-toolchain.toml` pins Rust 1.85.0; CI prints rustc/cargo versions and runs clippy/tests/smokes with committed `Cargo.lock` via `--locked`. CI 42410172728 passed on rustc/cargo 1.85.0. |
 | G1-R12 | Zero unresolved Critical/Major findings | PASS | Final review findings M1-011/M1-012 completed RED -> GREEN repair in CI 42410877129 -> 42411019313. No Critical/Major finding remains open. Minor M1-013/M1-014 are resolved; M1-015/M1-016 are documented non-blocking limitations. |
-| G1-R13 | Full tests/format/lint/fresh CI after all repairs | FAIL | Prior green CI predates required repairs and does not close this gate. |
+| G1-R13 | Full tests/format/lint/fresh CI after all repairs | PASS | Exact-head `b0523f9c727fd9c6a07f4756d02e35b348d4aa86` passed push CI 42411310293 and PR CI 42411314256: pinned Rust 1.85.0, fmt, locked Clippy, locked full workspace tests, hello smoke, Fibonacci smoke. |
 | G1-R14 | Documentation accurately reflects stabilized M1 behavior | PASS | README plus `M1_MODULE_SEMANTICS.md`, `M1_NUMERIC_SEMANTICS.md`, and `M1_KNOWN_LIMITATIONS.md` now document implemented M1 behavior, locked future work, and known non-blocking limitations without production/performance claims. |
 
 ## 2. Adversarial Review Ledger
@@ -110,11 +110,11 @@ cargo test --workspace --locked
 
 Additional Gate 1 conformance/adversarial commands must be recorded here once created.
 
-**Current final verification state:** PRE-FINAL REPRODUCIBILITY RUN GREEN — CI 42410172728 on pinned Rust 1.85.0 with locked clippy/tests/smokes. This does not replace the required final run after stress/docs/review closure.
+**Current final verification state:** PASS — exact-head `b0523f9c727fd9c6a07f4756d02e35b348d4aa86` passed push CI **42411310293** and PR CI **42411314256** with pinned Rust 1.85.0, locked dependencies, fmt, Clippy, full workspace tests, and both smoke programs.
 
 ## 5. CI Evidence
 
-CI 42410172728 is the current reproducibility baseline: rustc 1.85.0, cargo 1.85.0, `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, `cargo test --workspace --locked`, and both executable smoke tests all passed. It is pre-final evidence only; a new run is required after the remaining Gate 1 closure work.
+Reproducibility baseline CI 42410172728 established rustc/cargo 1.85.0 with locked verification. Final code/docs head `b0523f9c727fd9c6a07f4756d02e35b348d4aa86` then passed push CI **42411310293** and PR CI **42411314256** using the same pinned/locked pipeline. Gate Policy failure on the PR is expected while owner authorization remains NO.
 
 ## 6. Conformance Evidence
 
@@ -183,8 +183,8 @@ Known non-blocking M1 limitations are documented in `docs/M1_KNOWN_LIMITATIONS.m
 
 ## 15. Final Decision
 
-**Decision:** FAIL / ACTIVE  
-**Reason:** Technical review/repair work is complete and no Critical/Major finding is open. Gate 1 remains VERIFYING until the final exact-head locked CI is green and Timothy Holm explicitly authorizes Gate 2.
+**Decision:** FAIL / VERIFYING  
+**Reason:** Every technical Gate 1 requirement G1-R01 through G1-R14 is satisfied and final pinned/locked CI is green. Gate 1 remains VERIFYING solely because explicit owner authorization to pass Gate 1/open Gate 2 has not yet been recorded.
 
 ### Owner authorization
 

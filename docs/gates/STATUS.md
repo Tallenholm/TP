@@ -7,7 +7,7 @@ Last updated: 2026-11-07
 | Gate | Name | State | Notes |
 |---|---|---|---|
 | 0 | Governance, Repository Control, and IP | PASSED | Governance/IP/repository policy complete. Owner-managed `main` without mandatory server-side branch protection is explicitly accepted in ADR-0002. |
-| 1 | M1 Adversarial Stabilization | VERIFYING | Final adversarial review/repairs, stress evidence, documentation audit, branch reconciliation, and reproducibility work are complete. Awaiting fresh final locked CI and explicit owner authorization. |
+| 1 | M1 Adversarial Stabilization | VERIFYING | G1-R01 through G1-R14 are technically satisfied; exact-head push/PR CI are green. Only explicit owner authorization remains before Gate 1 can become PASSED / Gate 2 ACTIVE. |
 | 2 | M1 Semantic Freeze | LOCKED | Depends on Gate 1 PASSED. |
 | 3 | Compiler Architecture Foundation | LOCKED | Depends on Gate 2 PASSED. |
 | 4 | Ownership and Memory Model | LOCKED | Depends on Gate 3 PASSED. |
@@ -60,8 +60,8 @@ All known Critical/Major findings in the Gate 1 adversarial ledger are currently
 
 Gate 1 remains ACTIVE because the proof/closure work is not yet complete:
 
-1. run the complete final verification on the current head using pinned Rust 1.85.0 and locked dependencies;
-2. record the final CI result in the Gate 1 evidence;
-3. obtain explicit owner authorization before Gate 1 may become PASSED / Gate 2 ACTIVE.
+1. obtain explicit owner authorization before Gate 1 may become PASSED / Gate 2 ACTIVE.
+
+Final verification evidence: exact-head push CI 42411310293 and PR CI 42411314256 both passed the pinned Rust 1.85.0 / locked dependency pipeline.
 
 Gate 2 remains LOCKED until Gate 1 is formally PASS and the owner explicitly authorizes Gate 2.
