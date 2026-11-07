@@ -1,5 +1,4 @@
-use std::sync::atomic::{AtomicU32, Ordering};
-
+use std::{collections::BTreeMap, sync::atomic::{AtomicU32, Ordering}};
 static NEXT_SOURCE_ID: AtomicU32 = AtomicU32::new(1);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -110,5 +109,31 @@ impl SourceFile {
             line = stripped;
         }
         Some(line)
+    }
+}
+
+
+#[derive(Debug, Clone, Default)]
+pub struct SourceManager {
+    files: BTreeMap<SourceId, SourceFile>,
+}
+
+impl SourceManager {
+    pub fn insert(&mut self, source: SourceFile) -> SourceId {
+        let id = source.id();
+        self.files.insert(id, source);
+        id
+    }
+
+    pub fn get(&self, id: SourceId) -> Option<&SourceFile> {
+        self.files.get(&id)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &SourceFile> {
+        self.files.values()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.files.is_empty()
     }
 }

@@ -6,16 +6,43 @@ use std::{
 
 use crate::{
     Block, Diagnostic, Expr, ExprKind, FnDecl, ImportDecl, Item, Lexer, MatchArm, Module, Param,
-    Parser, Pattern, PatternKind, SourceFile, Stmt, StructDecl, TypeRef, VariantDecl,
+    Parser, Pattern, PatternKind, SourceFile, SourceManager, Stmt, StructDecl, TypeRef, VariantDecl,
 };
 
 pub struct ModuleLoader;
 
+#[derive(Debug)]
+pub struct ModuleLoadReport {
+    pub module: Option<Module>,
+    pub diagnostics: Vec<Diagnostic>,
+    pub sources: SourceManager,
+}
+
 impl ModuleLoader {
     pub fn load(path: &Path) -> Result<Module, Vec<Diagnostic>> {
+        let report = Self::load_with_sources(path);
+        if report.diagnostics.is_empty() {
+            Ok(report.module.unwrap_or(Module { items: Vec::new() }))
+        } else {
+            Err(report.diagnostics)
+        }
+    }
+
+    pub fn load_with_sources(path: &Path) -> ModuleLoadReport {
         let mut stack = Vec::new();
-        let items = load_recursive(path, "", &mut stack)?;
-        Ok(Module { items })
+        let mut sources = SourceManager::default();
+        match load_recursive(path, "", &mut stack, &mut sources) {
+            Ok(items) => ModuleLoadReport {
+                module: Some(Module { items }),
+                diagnostics: Vec::new(),
+                sources,
+            },
+            Err(diagnostics) => ModuleLoadReport {
+                module: None,
+                diagnostics,
+                sources,
+            },
+        }
     }
 }
 
@@ -23,6 +50,7 @@ fn load_recursive(
     path: &Path,
     namespace: &str,
     stack: &mut Vec<PathBuf>,
+    sources: &mut SourceManager,
 ) -> Result<Vec<Item>, Vec<Diagnostic>> {
     let canonical = canonicalize_for_load(path)?;
     if let Some(index) = stack.iter().position(|entry| entry == &canonical) {
@@ -43,7 +71,7 @@ fn load_recursive(
             format!("unable to read module `{}`: {error}", canonical.display()),
         )]
     })?;
-    let module = parse_file(&canonical, &source)?;
+    let module = parse_file(&canonical, &source, sources)?;
 
     stack.push(canonical.clone());
     let imports: Vec<ImportDecl> = module
@@ -65,7 +93,7 @@ fn load_recursive(
             .parent()
             .unwrap_or_else(|| Path::new("."))
             .join(format!("{}.tp", import.module));
-        match load_recursive(&child_path, &child_namespace, stack) {
+        match load_recursive(&child_path, &child_namespace, stack, sources) {
             Ok(mut items) => imported_items.append(&mut items),
             Err(diagnostics) => {
                 stack.pop();
@@ -95,8 +123,13 @@ fn canonicalize_for_load(path: &Path) -> Result<PathBuf, Vec<Diagnostic>> {
     })
 }
 
-fn parse_file(path: &Path, source: &str) -> Result<Module, Vec<Diagnostic>> {
+fn parse_file(
+    path: &Path,
+    source: &str,
+    sources: &mut SourceManager,
+) -> Result<Module, Vec<Diagnostic>> {
     let source_file = SourceFile::new(path.display().to_string(), source);
+    sources.insert(source_file.clone());
     let lexed = Lexer::new(&source_file).lex();
     let mut diagnostics = lexed.diagnostics;
     let parsed = Parser::new(&source_file, lexed.tokens).parse_module();

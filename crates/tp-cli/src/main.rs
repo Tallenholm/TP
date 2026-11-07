@@ -1,7 +1,10 @@
 use std::{path::PathBuf, process::ExitCode};
 
 use clap::{Parser, Subcommand, ValueEnum};
-use tp_compiler::{Compiler, Diagnostic, RunFailure, RuntimeError, Severity};
+use tp_compiler::{
+    Compiler, Diagnostic, RunFailure, RuntimeError, Severity, SourceManager,
+    render_diagnostic_json, render_diagnostic_with_sources,
+};
 
 #[derive(Debug, Parser)]
 #[command(name = "tp", version, about = "TP programming language toolchain")]
@@ -49,43 +52,49 @@ fn main() -> ExitCode {
             if report.diagnostics.is_empty() {
                 ExitCode::SUCCESS
             } else {
-                emit_diagnostics(&report.diagnostics, diagnostic_format);
+                emit_diagnostics(&report.diagnostics, &report.sources, diagnostic_format);
                 ExitCode::FAILURE
             }
         }
         Command::Run {
             path,
             diagnostic_format,
-        } => match compiler.run_path(&path) {
-            Ok(report) => {
-                print!("{}", report.output);
-                ExitCode::SUCCESS
+        } => {
+            let checked = compiler.check_path(&path);
+            if !checked.diagnostics.is_empty() {
+                emit_diagnostics(&checked.diagnostics, &checked.sources, diagnostic_format);
+                return ExitCode::FAILURE;
             }
-            Err(RunFailure::Compile(diagnostics)) => {
-                emit_diagnostics(&diagnostics, diagnostic_format);
-                ExitCode::FAILURE
+
+            match compiler.run_path(&path) {
+                Ok(report) => {
+                    print!("{}", report.output);
+                    ExitCode::SUCCESS
+                }
+                Err(RunFailure::Compile(diagnostics)) => {
+                    emit_diagnostics(&diagnostics, &checked.sources, diagnostic_format);
+                    ExitCode::FAILURE
+                }
+                Err(RunFailure::Runtime(error)) => {
+                    emit_runtime_error(&error, diagnostic_format);
+                    ExitCode::FAILURE
+                }
             }
-            Err(RunFailure::Runtime(error)) => {
-                emit_runtime_error(&error, diagnostic_format);
-                ExitCode::FAILURE
-            }
-        },
+        }
     }
 }
 
-fn emit_diagnostics(diagnostics: &[Diagnostic], format: DiagnosticFormat) {
+fn emit_diagnostics(
+    diagnostics: &[Diagnostic],
+    sources: &SourceManager,
+    format: DiagnosticFormat,
+) {
     for diagnostic in diagnostics {
         match format {
-            DiagnosticFormat::Human => eprintln!(
-                "{}[{}]: {}",
-                diagnostic.severity, diagnostic.code, diagnostic.message
-            ),
-            DiagnosticFormat::Json => eprintln!(
-                "{{\"schema\":1,\"code\":\"{}\",\"severity\":\"{}\",\"message\":\"{}\"}}",
-                json_escape(diagnostic.code),
-                diagnostic.severity,
-                json_escape(&diagnostic.message)
-            ),
+            DiagnosticFormat::Human => {
+                eprint!("{}", render_diagnostic_with_sources(sources, diagnostic));
+            }
+            DiagnosticFormat::Json => eprintln!("{}", render_diagnostic_json(sources, diagnostic)),
         }
     }
 }
@@ -94,7 +103,7 @@ fn emit_runtime_error(error: &RuntimeError, format: DiagnosticFormat) {
     match format {
         DiagnosticFormat::Human => eprintln!("error[{}]: {}", error.code, error.message),
         DiagnosticFormat::Json => eprintln!(
-            "{{\"schema\":1,\"code\":\"{}\",\"severity\":\"{}\",\"message\":\"{}\"}}",
+            "{{\"schema\":1,\"code\":\"{}\",\"severity\":\"{}\",\"message\":\"{}\",\"primary\":null,\"labels\":[],\"help\":null}}",
             json_escape(error.code),
             Severity::Error,
             json_escape(&error.message)

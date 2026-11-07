@@ -2,7 +2,8 @@ use std::path::Path;
 
 use crate::{
     Diagnostic, HirLowerer, HirModule, Interpreter, Lexer, MirLowerer, MirModule, Module,
-    ModuleLoader, Parser, RuntimeError, SemanticModel, SourceFile, TypeChecker, Value,
+    ModuleLoader, Parser, RuntimeError, SemanticModel, SourceFile, SourceManager, TypeChecker,
+    Value,
 };
 
 #[derive(Debug, Default)]
@@ -14,20 +15,38 @@ impl Compiler {
     }
 
     pub fn check_source(&self, name: &str, source: &str) -> CompileReport {
-        match self.checked_module(name, source) {
-            Ok(_) => CompileReport {
-                diagnostics: Vec::new(),
-            },
-            Err(diagnostics) => CompileReport { diagnostics },
+        let source_file = SourceFile::new(name, source);
+        let mut sources = SourceManager::default();
+        sources.insert(source_file.clone());
+
+        let lexed = Lexer::new(&source_file).lex();
+        let mut diagnostics = lexed.diagnostics;
+        let parsed = Parser::new(&source_file, lexed.tokens).parse_module();
+        diagnostics.extend(parsed.diagnostics);
+        let module = parsed.module.unwrap_or(Module { items: Vec::new() });
+
+        if diagnostics.is_empty() {
+            diagnostics.extend(TypeChecker::check_module(&module).diagnostics);
+        }
+
+        CompileReport {
+            diagnostics,
+            sources,
         }
     }
 
     pub fn check_path(&self, path: &Path) -> CompileReport {
-        match self.checked_path_module(path) {
-            Ok(_) => CompileReport {
-                diagnostics: Vec::new(),
-            },
-            Err(diagnostics) => CompileReport { diagnostics },
+        let loaded = ModuleLoader::load_with_sources(path);
+        let mut diagnostics = loaded.diagnostics;
+        if diagnostics.is_empty() {
+            if let Some(module) = loaded.module {
+                diagnostics.extend(TypeChecker::check_module(&module).diagnostics);
+            }
+        }
+
+        CompileReport {
+            diagnostics,
+            sources: loaded.sources,
         }
     }
 
@@ -135,6 +154,7 @@ struct CheckedModule {
 #[derive(Debug, Default)]
 pub struct CompileReport {
     pub diagnostics: Vec<Diagnostic>,
+    pub sources: SourceManager,
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -24,7 +24,10 @@ pub use ast::{
     BinaryOp, Block, EnumDecl, Expr, ExprKind, FieldDecl, FnDecl, ImportDecl, Item, MatchArm,
     Module, Param, Pattern, PatternKind, Stmt, StructDecl, TypeRef, UnaryOp, VariantDecl,
 };
-pub use diagnostic::{Diagnostic, Label, Severity, render_diagnostic};
+pub use diagnostic::{
+    Diagnostic, Label, Severity, render_diagnostic, render_diagnostic_json,
+    render_diagnostic_with_sources,
+};
 pub use hir::{
     HirBlock, HirExpr, HirExprKind, HirFunction, HirGlobalKind, HirMatchArm, HirModule, HirParam,
     HirPattern, HirPatternKind, HirStmt,
@@ -37,11 +40,11 @@ pub use mir::{
     BasicBlock, BlockId, Constant, LocalId, MirFunction, MirLocal, MirModule, MirPattern,
     MirStatement, Operand, Rvalue, Terminator,
 };
-pub use module_loader::ModuleLoader;
+pub use module_loader::{ModuleLoadReport, ModuleLoader};
 pub use parser::{ParseResult, Parser};
 pub use pipeline::{CompileReport, Compiler, RunFailure, RunReport};
 pub use semantic::SemanticModel;
-pub use source::{LineCol, SourceFile, SourceId, Span};
+pub use source::{LineCol, SourceFile, SourceId, SourceManager, Span};
 pub use symbol::{Binding, Scopes, SymbolId};
 pub use token::{Token, TokenKind};
 pub use typecheck::{TypeCheckResult, TypeChecker};
