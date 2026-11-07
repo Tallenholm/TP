@@ -96,3 +96,19 @@ fn result_constructor_infers_generic_payloads() {
     );
     assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
 }
+
+
+#[test]
+fn function_and_enum_variant_value_names_cannot_collide() {
+    let report = check(
+        "enum Choice { make(i64) } fn make(x: i64) -> String { \"function\" } fn main() -> Choice { make(1) }",
+    );
+    assert!(
+        report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("conflicts")),
+        "expected a global value-name collision diagnostic, got: {:#?}",
+        report.diagnostics
+    );
+}
