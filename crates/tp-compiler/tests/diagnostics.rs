@@ -1,4 +1,6 @@
-use tp_compiler::{Diagnostic, SourceFile, SourceManager, Span, render_diagnostic, render_diagnostic_json};
+use tp_compiler::{
+    Diagnostic, SourceFile, SourceManager, Span, render_diagnostic, render_diagnostic_json,
+};
 
 #[test]
 fn byte_span_maps_to_line_and_column() {
@@ -53,6 +55,12 @@ fn json_diagnostic_preserves_secondary_label_and_help() {
     assert!(rendered.contains("\"schema\":1"), "{rendered}");
     assert!(rendered.contains("\"file\":\"main.tp\""), "{rendered}");
     assert!(rendered.contains("\"line\":1"), "{rendered}");
-    assert!(rendered.contains("\"message\":\"previous declaration\""), "{rendered}");
-    assert!(rendered.contains("\"help\":\"rename one declaration\""), "{rendered}");
+    assert!(
+        rendered.contains("\"message\":\"previous declaration\""),
+        "{rendered}"
+    );
+    assert!(
+        rendered.contains("\"help\":\"rename one declaration\""),
+        "{rendered}"
+    );
 }
