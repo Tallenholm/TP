@@ -31,10 +31,13 @@ impl ModuleLoader {
 
     pub fn load_with_sources(path: &Path) -> ModuleLoadReport {
         let mut stack = Vec::new();
+        let mut loaded = HashMap::new();
         let mut sources = SourceManager::default();
-        match load_recursive(path, "", &mut stack, &mut sources) {
-            Ok(items) => ModuleLoadReport {
-                module: Some(Module { items }),
+        match load_recursive(path, "", &mut stack, &mut loaded, &mut sources) {
+            Ok(loaded_module) => ModuleLoadReport {
+                module: Some(Module {
+                    items: loaded_module.items,
+                }),
                 diagnostics: Vec::new(),
                 sources,
             },
@@ -47,12 +50,19 @@ impl ModuleLoader {
     }
 }
 
+#[derive(Debug)]
+struct LoadedModule {
+    namespace: String,
+    items: Vec<Item>,
+}
+
 fn load_recursive(
     path: &Path,
-    namespace: &str,
+    requested_namespace: &str,
     stack: &mut Vec<PathBuf>,
+    loaded: &mut HashMap<PathBuf, String>,
     sources: &mut SourceManager,
-) -> Result<Vec<Item>, Vec<Diagnostic>> {
+) -> Result<LoadedModule, Vec<Diagnostic>> {
     let canonical = canonicalize_for_load(path)?;
     if let Some(index) = stack.iter().position(|entry| entry == &canonical) {
         let mut chain: Vec<String> = stack[index..]
@@ -65,6 +75,16 @@ fn load_recursive(
             format!("import cycle detected: {}", chain.join(" -> ")),
         )]);
     }
+
+    if let Some(namespace) = loaded.get(&canonical) {
+        return Ok(LoadedModule {
+            namespace: namespace.clone(),
+            items: Vec::new(),
+        });
+    }
+
+    let namespace = requested_namespace.to_owned();
+    loaded.insert(canonical.clone(), namespace.clone());
 
     let source = fs::read_to_string(&canonical).map_err(|error| {
         vec![Diagnostic::error(
@@ -84,18 +104,45 @@ fn load_recursive(
         })
         .collect();
 
+    let mut alias_bindings: HashMap<String, (String, crate::Span)> = HashMap::new();
     let mut import_namespaces = HashMap::new();
     let mut imported_items = Vec::new();
     for import in &imports {
         let alias = import.alias.as_deref().unwrap_or(&import.module);
-        let child_namespace = qualify(namespace, alias);
-        import_namespaces.insert(alias.to_owned(), child_namespace.clone());
+
+        if let Some((previous_module, previous_span)) = alias_bindings.get(alias) {
+            if previous_module == &import.module {
+                continue;
+            }
+
+            stack.pop();
+            return Err(vec![
+                Diagnostic::error(
+                    "TP-E0200",
+                    format!("duplicate import alias `{alias}`"),
+                )
+                .with_primary(import.span)
+                .with_label(*previous_span, "alias was first bound here"),
+            ]);
+        }
+        alias_bindings.insert(alias.to_owned(), (import.module.clone(), import.span));
+
+        let child_requested_namespace = qualify(&namespace, alias);
         let child_path = canonical
             .parent()
             .unwrap_or_else(|| Path::new("."))
             .join(format!("{}.tp", import.module));
-        match load_recursive(&child_path, &child_namespace, stack, sources) {
-            Ok(mut items) => imported_items.append(&mut items),
+        match load_recursive(
+            &child_path,
+            &child_requested_namespace,
+            stack,
+            loaded,
+            sources,
+        ) {
+            Ok(mut child) => {
+                import_namespaces.insert(alias.to_owned(), child.namespace.clone());
+                imported_items.append(&mut child.items);
+            }
             Err(diagnostics) => {
                 stack.pop();
                 return Err(diagnostics);
@@ -108,11 +155,15 @@ fn load_recursive(
         .into_iter()
         .filter(|item| !matches!(item, Item::Import(_)))
         .collect();
-    let mut rewriter = NamespaceRewriter::new(namespace, &current_items, import_namespaces);
+    let mut rewriter = NamespaceRewriter::new(&namespace, &current_items, import_namespaces);
     let mut rewritten = rewriter.rewrite_items(current_items);
     rewritten.append(&mut imported_items);
     stack.pop();
-    Ok(rewritten)
+
+    Ok(LoadedModule {
+        namespace,
+        items: rewritten,
+    })
 }
 
 fn canonicalize_for_load(path: &Path) -> Result<PathBuf, Vec<Diagnostic>> {
