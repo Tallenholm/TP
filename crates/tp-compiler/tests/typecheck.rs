@@ -178,3 +178,87 @@ fn unreachable_tail_does_not_restore_fallthrough() {
     let report = check("fn value() -> i64 { return 1; \"unreachable\" }");
     assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
 }
+
+#[test]
+fn unknown_declared_type_is_rejected() {
+    let report = check("fn bad(value: Missing) { }");
+    assert!(
+        report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("unknown type `Missing`")),
+        "{:#?}",
+        report.diagnostics
+    );
+}
+
+#[test]
+fn nominal_generic_arity_is_checked() {
+    let report = check(
+        "enum Option<T> { Some(T), None } fn too_few(value: Option) { } fn too_many(value: Option<i64, String>) { }",
+    );
+    let arity_errors = report
+        .diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.message.contains("type `Option` expects 1"))
+        .count();
+    assert_eq!(arity_errors, 2, "{:#?}", report.diagnostics);
+}
+
+#[test]
+fn duplicate_generic_parameters_are_rejected() {
+    let report = check("struct Pair<T, T> { value: T }");
+    assert!(
+        report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("duplicate generic parameter `T`")),
+        "{:#?}",
+        report.diagnostics
+    );
+}
+
+#[test]
+fn duplicate_struct_fields_are_rejected() {
+    let report = check("struct User { id: i64, id: String }");
+    assert!(
+        report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("duplicate struct field `id`")),
+        "{:#?}",
+        report.diagnostics
+    );
+}
+
+#[test]
+fn struct_and_enum_type_names_cannot_collide() {
+    let report = check("struct Thing { value: i64 } enum Thing { Empty }");
+    assert!(
+        report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("duplicate type name `Thing`")),
+        "{:#?}",
+        report.diagnostics
+    );
+}
+
+#[test]
+fn function_and_type_names_cannot_collide() {
+    let report = check("struct Thing { value: i64 } fn Thing() { }");
+    assert!(
+        report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("conflicts with type `Thing`")),
+        "{:#?}",
+        report.diagnostics
+    );
+}
+
+#[test]
+fn nested_local_shadowing_is_allowed() {
+    let report = check("fn main() { let x = 1; if true { let x = 2; x; } x; }");
+    assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
+}
