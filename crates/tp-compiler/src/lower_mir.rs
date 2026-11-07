@@ -386,8 +386,8 @@ impl<'a> FunctionBuilder<'a> {
     fn lower_pattern(&mut self, pattern: &HirPattern) -> MirPattern {
         match &pattern.kind {
             HirPatternKind::Wildcard => MirPattern::Wildcard,
-            HirPatternKind::Bind { symbol, name } => {
-                let local = self.new_named_local(Some(name.clone()), Type::Unknown, false);
+            HirPatternKind::Bind { symbol, name, ty } => {
+                let local = self.new_named_local(Some(name.clone()), ty.clone(), false);
                 self.symbol_locals.insert(*symbol, local);
                 MirPattern::Bind(local)
             }
