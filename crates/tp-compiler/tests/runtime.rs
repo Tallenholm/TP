@@ -87,3 +87,20 @@ fn true_or_skips_trapping_rhs() {
         .expect("short-circuit should skip RHS");
     assert_eq!(report.value, Value::Bool(true));
 }
+
+#[test]
+fn logical_operators_evaluate_rhs_when_required() {
+    for source in [
+        "fn main() -> Bool { true && (10 / 0 == 1) }",
+        "fn main() -> Bool { false || (10 / 0 == 1) }",
+    ] {
+        let error = Compiler::new()
+            .run_source("main.tp", source)
+            .expect_err("RHS must be evaluated");
+        let RunFailure::Runtime(error) = error else {
+            panic!("expected runtime failure");
+        };
+        assert_eq!(error.code, "TP-E0500");
+        assert!(error.message.contains("division by zero"));
+    }
+}
