@@ -23,7 +23,7 @@
 | G1-R08 | Source-aware human and rich versioned JSON diagnostics | PASS | `SourceManager` now retains entry/imported sources through checking; CLI human output includes file/line/snippet/caret, Unicode caret width is character-based, secondary labels/help render, and JSON schema 1 includes source ranges, labels, and help. RED CI 42357731005; GREEN CI 42409295937 + rich-boundary CI 42409405310. |
 | G1-R09 | Establish one authoritative semantic source of truth | PASS | `SemanticModel` now carries checked function signatures, expression/block types, binding symbols/types, local resolutions, and global categories into HIR; `lower_hir.rs` is structural-only and MIR consumes checked global/binding facts. CI 42355570648 green. |
 | G1-R10 | Harden module graph/path/canonicalization semantics | PASS | Canonical-path module identity now deduplicates repeated/diamond/symlink imports; qualified imported nominal types/struct literals/enum constructors/patterns work; deterministic lowering and host-filesystem behavior are tested/documented. |
-| G1-R11 | Reproducible locked verification policy | FAIL | Current CI requires hardening/explicit locked policy. |
+| G1-R11 | Reproducible locked verification policy | PASS | `rust-toolchain.toml` pins Rust 1.85.0; CI prints rustc/cargo versions and runs clippy/tests/smokes with committed `Cargo.lock` via `--locked`. CI 42410172728 passed on rustc/cargo 1.85.0. |
 | G1-R12 | Zero unresolved Critical/Major findings | PASS | All ten Major findings M1-001 through M1-010 are RESOLVED with retained RED -> GREEN evidence; no Critical finding has been identified. Final whole-branch review remains required before Gate 1 PASS. |
 | G1-R13 | Full tests/format/lint/fresh CI after all repairs | FAIL | Prior green CI predates required repairs and does not close this gate. |
 | G1-R14 | Documentation accurately reflects stabilized M1 behavior | FAIL | Docs now mark gate status, but semantic docs remain subject to Gate 1/2 work. |
@@ -83,7 +83,7 @@ The 2026-11-07 review explicitly inspected:
 - Rust manifests, lockfile policy, toolchain file, and CI workflow;
 - README capability claims.
 
-No Critical finding was identified in this pass. All Major findings M1-001 through M1-010 are RESOLVED with retained RED -> GREEN evidence. A fresh whole-branch adversarial review remains mandatory after all repairs. A fresh whole-branch adversarial review remains mandatory after all repairs.
+No Critical finding was identified in this pass. All Major findings M1-001 through M1-010 are RESOLVED with retained RED -> GREEN evidence. A fresh whole-branch adversarial review remains mandatory after all repairs.
 
 ## 3.2 Execution rulings
 
@@ -95,19 +95,17 @@ Final verification must include at least:
 
 ```bash
 cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
+cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 ```
 
 Additional Gate 1 conformance/adversarial commands must be recorded here once created.
 
-**Current final verification state:** NOT RUN AFTER REQUIRED REPAIRS.
+**Current final verification state:** PRE-FINAL REPRODUCIBILITY RUN GREEN — CI 42410172728 on pinned Rust 1.85.0 with locked clippy/tests/smokes. This does not replace the required final run after stress/docs/review closure.
 
 ## 5. CI Evidence
 
-Prior CI run(s) proved the pre-review implementation built and passed its then-current tests. They are historical evidence only and do not pass Gate 1 because the adversarial review exposed uncovered defects.
-
-Fresh CI evidence will be recorded after all Gate 1 blockers are resolved.
+CI 42410172728 is the current reproducibility baseline: rustc 1.85.0, cargo 1.85.0, `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, `cargo test --workspace --locked`, and both executable smoke tests all passed. It is pre-final evidence only; a new run is required after the remaining Gate 1 closure work.
 
 ## 6. Conformance Evidence
 
@@ -168,7 +166,7 @@ No Critical/Major finding is currently open. Remaining Gate 1 work is reproducib
 ## 15. Final Decision
 
 **Decision:** FAIL / ACTIVE  
-**Reason:** All known Critical/Major correctness findings are resolved, but Gate 1 still requires reproducible locked verification, final conformance/stress evidence, documentation audit, fresh final CI, and whole-branch adversarial review.
+**Reason:** All known Critical/Major correctness findings and reproducibility requirements are resolved, but Gate 1 still requires final conformance/stress evidence, documentation audit, branch reconciliation, fresh final CI, and whole-branch adversarial review.
 
 ### Owner authorization
 

@@ -89,20 +89,20 @@ Before TP grows a native backend or memory model, M1 must prove that the languag
 
 ### Requirements
 
-The bootstrap compiler is written in Rust. A Rust toolchain with Cargo is required.
+The bootstrap compiler is written in Rust. **Rust 1.85.0** is the pinned M1 bootstrap toolchain, including its `rustfmt` and `clippy` components.
 
-The repository currently carries a `Cargo.lock`. Gate 1 still includes a dedicated reproducibility task to pin the supported bootstrap toolchain and make all CI dependency use explicitly locked.
+The repository carries a committed `Cargo.lock`, and Gate 1 CI uses locked dependency resolution. Using the checked-in `rust-toolchain.toml` is the supported development path.
 
 ### Build
 
 ```bash
-cargo build --workspace
+cargo build --workspace --locked
 ```
 
 ### Check a TP program
 
 ```bash
-cargo run -p tp-cli -- check examples/hello.tp
+cargo run --locked -p tp-cli -- check examples/hello.tp
 ```
 
 A valid program exits with status `0`. Compile errors exit with status `1`.
@@ -110,7 +110,7 @@ A valid program exits with status `0`. Compile errors exit with status `1`.
 ### Run a TP program
 
 ```bash
-cargo run -p tp-cli -- run examples/hello.tp
+cargo run --locked -p tp-cli -- run examples/hello.tp
 ```
 
 Expected output:
@@ -132,7 +132,7 @@ The current development command is `tp`, built by the `tp-cli` crate.
 Parse and statically validate a TP source file without executing it:
 
 ```bash
-cargo run -p tp-cli -- check path/to/main.tp
+cargo run --locked -p tp-cli -- check path/to/main.tp
 ```
 
 ### `tp run`
@@ -140,7 +140,7 @@ cargo run -p tp-cli -- check path/to/main.tp
 Compile through MIR and execute the program with the M1 interpreter:
 
 ```bash
-cargo run -p tp-cli -- run path/to/main.tp
+cargo run --locked -p tp-cli -- run path/to/main.tp
 ```
 
 Run mode requires an executable `main` function. Under the current M1 contract, `main` takes zero parameters.
@@ -150,10 +150,10 @@ Program output goes to stdout. Compiler/runtime diagnostics go to stderr.
 ### JSON diagnostics
 
 ```bash
-cargo run -p tp-cli -- check --diagnostic-format json path/to/main.tp
+cargo run --locked -p tp-cli -- check --diagnostic-format json path/to/main.tp
 ```
 
-The current JSON surface includes a schema version, diagnostic code, severity, and message. Gate 1 is actively extending the end-to-end diagnostic contract with retained source files, spans, labels, help information, and multi-file context.
+The current JSON diagnostic surface is versioned and includes the diagnostic code, severity, message, source-aware primary range, secondary labels, and help text when present. Human diagnostics retain entry/imported source files and render file/line/snippet/caret context.
 
 ---
 
@@ -262,7 +262,7 @@ The current type checker validates nominal type declarations and exact generic a
 
 M1 currently supports wildcard, binding, literal, and enum-variant patterns.
 
-Enum exhaustiveness checking exists today. Gate 1 still contains an open hardening item for exhaustive finite-domain behavior outside enums, including booleans/literal matches, so broader exhaustiveness must not yet be considered frozen.
+Gate 1 now checks enum exhaustiveness, both values of `Bool`, catch-all coverage for open literal domains, and unreachable/duplicate arms. These semantics are implemented and regression-tested, but they are not considered frozen until Gate 2 passes.
 
 ### Multi-file programs
 
@@ -303,7 +303,7 @@ Implemented today, but still subject to Gate 1 repair and Gate 2 semantic freeze
 | Control flow | `if` / `else`, `while`, explicit `return` |
 | Data types | structs, generic enums, variant constructors |
 | Patterns | wildcard, binding, literals, enum variants |
-| Modules | sibling imports and aliases |
+| Modules | sibling imports/aliases, canonical identity/deduplication, qualified imported functions/types/constructors/patterns |
 | Source | UTF-8, Unicode alphabetic identifiers, line comments, escaped strings |
 | Compiler IR | typed HIR, explicit-control-flow MIR |
 | Runtime | MIR interpreter, checked integer arithmetic, runtime traps |
@@ -455,11 +455,11 @@ The current baseline verification commands are:
 
 ```bash
 cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo test --workspace --locked
 ```
 
-Gate 1 also requires reproducibility hardening before it may pass, including a pinned bootstrap toolchain and locked dependency verification.
+Gate 1 reproducibility is pinned to Rust 1.85.0 and locked Cargo dependencies. Gate 1 still requires final stress/conformance evidence, documentation audit, whole-branch adversarial review, and a fresh final CI run before it may pass.
 
 ---
 

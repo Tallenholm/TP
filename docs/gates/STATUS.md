@@ -7,7 +7,7 @@ Last updated: 2026-11-07
 | Gate | Name | State | Notes |
 |---|---|---|---|
 | 0 | Governance, Repository Control, and IP | PASSED | Governance/IP/repository policy complete. Owner-managed `main` without mandatory server-side branch protection is explicitly accepted in ADR-0002. |
-| 1 | M1 Adversarial Stabilization | ACTIVE | Current M1 implementation is under adversarial review. Known semantic defects must be repaired before this gate can pass. |
+| 1 | M1 Adversarial Stabilization | ACTIVE | All known Critical/Major findings are resolved. Remaining work is stress/conformance evidence, documentation audit, branch reconciliation/final adversarial review, and fresh final locked CI. |
 | 2 | M1 Semantic Freeze | LOCKED | Depends on Gate 1 PASSED. |
 | 3 | Compiler Architecture Foundation | LOCKED | Depends on Gate 2 PASSED. |
 | 4 | Ownership and Memory Model | LOCKED | Depends on Gate 3 PASSED. |
@@ -54,15 +54,17 @@ Examples of prohibited work right now:
 
 If a task appears to belong to a locked gate, stop and update the controlling plan/status only after an explicit owner decision.
 
-## Known Gate 1 blockers
+## Remaining Gate 1 closure work
 
-At minimum, the following issues are already known and must be tracked/resolved before Gate 1 can pass:
+All ten known Major findings in the Gate 1 adversarial ledger are currently **RESOLVED** with retained RED -> GREEN evidence. No Critical finding is currently open.
 
-1. Return-flow analysis is unsound because the presence of any explicit return can suppress missing-return validation on other paths.
-2. `&&` / `||` currently use eager operand lowering and therefore lack correct short-circuit semantics.
-3. Type-name/generic validation needs hardening.
-4. Diagnostics need end-to-end source-aware rendering and richer machine-readable spans.
-5. Semantic logic is duplicated between checking and HIR lowering and must be reviewed/refactored toward a single source of truth.
-6. Module loading requires a broader adversarial/conformance test matrix.
+Gate 1 remains ACTIVE because the proof/closure work is not yet complete:
 
-This list is not exhaustive; the Gate 1 adversarial review ledger controls the complete finding set.
+1. record deterministic stress/recovery evidence appropriate to Gate 1;
+2. finish the M1 documentation audit so README/spec-facing claims match implemented behavior;
+3. reconcile the active branch with the current `main` governance/docs state;
+4. perform a fresh whole-branch adversarial architecture/correctness review;
+5. run the complete final verification on pinned Rust 1.85.0 with locked dependencies;
+6. record final CI/evidence in the Gate 1 report.
+
+Gate 2 remains LOCKED until Gate 1 is formally PASS and the owner explicitly authorizes Gate 2.
