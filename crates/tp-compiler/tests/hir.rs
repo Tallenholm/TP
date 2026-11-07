@@ -39,7 +39,10 @@ fn hir_preserves_checked_global_resolution_kind() {
         .find(|function| function.name == "main")
         .expect("main function");
 
-    let HirStmt::Expr { expr: helper_call, .. } = &function.body.statements[0] else {
+    let HirStmt::Expr {
+        expr: helper_call, ..
+    } = &function.body.statements[0]
+    else {
         panic!("expected helper call");
     };
     let HirExprKind::Call { callee, .. } = &helper_call.kind else {
