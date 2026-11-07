@@ -1,0 +1,81 @@
+name: Gate Policy
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  enforce-gate:
+    name: Require passed gate before main merge
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout proposed merge result
+        uses: actions/checkout@v4
+
+      - name: Verify mandatory governance files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f AGENTS.md
+          test -f CONTRIBUTING.md
+          test -f docs/MASTER_GATED_DEVELOPMENT_PLAN.md
+          test -f docs/gates/STATUS.md
+          test -f docs/gates/GATE_REPORT_TEMPLATE.md
+          test -f LICENSE
+
+      - name: Enforce declared gate report
+        shell: bash
+        run: |
+          python - <<'PY'
+          import glob
+          import json
+          import os
+          import re
+          import sys
+
+          event_path = os.environ["GITHUB_EVENT_PATH"]
+          with open(event_path, "r", encoding="utf-8") as fh:
+              event = json.load(fh)
+
+          pr = event.get("pull_request") or {}
+          title = pr.get("title") or ""
+          body = pr.get("body") or ""
+          text = f"{title}\n{body}"
+
+          match = re.search(r"\bGate(?:\s+|\s*:\s*)(\d+)\b", text, flags=re.IGNORECASE)
+          if not match:
+              print("::error::PR must declare its gate in the title or body, e.g. 'Gate 1'.")
+              sys.exit(1)
+
+          gate = int(match.group(1))
+          pattern = f"docs/gates/GATE-{gate:02d}-*.md"
+          reports = sorted(glob.glob(pattern))
+          if len(reports) != 1:
+              print(f"::error::Expected exactly one gate report matching {pattern}; found {len(reports)}.")
+              for report in reports:
+                  print(f"  - {report}")
+              sys.exit(1)
+
+          report_path = reports[0]
+          with open(report_path, "r", encoding="utf-8") as fh:
+              report = fh.read()
+
+          if "**Decision:** PASS" not in report:
+              print(f"::error::{report_path} is not marked '**Decision:** PASS'. Main merge is blocked.")
+              sys.exit(1)
+
+          if "**Next gate authorized to open:** YES" not in report:
+              print(f"::error::{report_path} does not record explicit owner authorization. Main merge is blocked.")
+              sys.exit(1)
+
+          if re.search(r"\|\s*OPEN\s*\|", report, flags=re.IGNORECASE):
+              print(f"::error::{report_path} still contains OPEN ledger findings. Main merge is blocked.")
+              sys.exit(1)
+
+          print(f"Gate {gate} policy satisfied by {report_path}.")
+          PY

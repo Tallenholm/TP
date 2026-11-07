@@ -8,37 +8,66 @@
 **Superseded by:** None / ADR-XXXX
 
 ## Context
+
 Describe the concrete problem, constraints, existing behavior, and why a durable decision is required.
 
 ## Decision Drivers
-List the forces that matter: safety, ergonomics, performance, complexity, interoperability, portability, tooling, AI reasoning, compatibility, security, and migration impact as applicable.
+
+List the specific forces that matter: safety, ergonomics, performance, implementation complexity, interoperability, portability, tooling, AI reasoning, compatibility, security, and migration impact as applicable.
 
 ## Options Considered
-Document each serious option with benefits, drawbacks, failure modes, and implementation consequences.
+
+### Option A — <name>
+
+Describe the approach, benefits, drawbacks, failure modes, and implementation consequences.
+
+### Option B — <name>
+
+Describe the approach, benefits, drawbacks, failure modes, and implementation consequences.
+
+Add additional options as required.
 
 ## Decision
-State exactly what TP will do, precisely enough to derive tests/specification language.
+
+State exactly what TP will do. This section must be precise enough for tests/specification language to be written from it.
 
 ## Consequences
-Record positive consequences, tradeoffs, risks, and mitigations.
+
+### Positive
+
+- <consequence>
+
+### Negative / Tradeoffs
+
+- <consequence>
+
+### Risks
+
+- <risk and mitigation>
 
 ## Semantic / Compatibility Impact
-Describe observable behavior, source compatibility, ABI/package effects, migration needs, and conformance changes.
+
+Describe observable language behavior, source compatibility, ABI effects, package effects, migration requirements, and whether prior conformance cases change.
 
 ## Security / Safety Impact
-Describe safe-code guarantees, unsafe boundaries, authority/effects, attack surface, memory safety, concurrency safety, and supply-chain trust.
+
+Describe effects on safe-code guarantees, unsafe boundaries, capability/effect authority, attack surface, memory safety, concurrency safety, and supply-chain trust as relevant.
 
 ## Performance Impact
-Record expected costs/benefits and required measurements. No unsupported performance claims.
+
+Record expected costs/benefits and what must eventually be measured. Do not claim performance wins without benchmark evidence.
 
 ## Tooling / AI Impact
-Describe diagnostics, LSP/tooling, machine-readable schema, formatter/refactoring, and AI-agent implications.
+
+Describe compiler diagnostics, LSP/tooling, machine-readable schema, formatter, refactoring, and AI-agent implications.
 
 ## Validation Plan
-List exact tests, prototypes, benchmarks, conformance cases, fuzz/property tests, or real-app experiments.
+
+List exact tests, prototypes, benchmarks, conformance cases, fuzz/property tests, or real-application experiments that must validate this decision.
 
 ## Reversal / Migration Plan
-Explain what evidence would reopen the decision and which gates would need to reopen.
+
+Explain how the decision could be changed later, what data would justify reopening it, and which gates would need to reopen.
 
 ## Approval
 

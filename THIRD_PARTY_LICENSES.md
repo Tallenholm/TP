@@ -59,7 +59,7 @@ The exact package/version set above is taken from the active M1 `Cargo.lock`. Li
 
 The dependency family used by TP is permissively licensed. For dual-licensed `MIT OR Apache-2.0` dependencies, TP may comply under an available license option; distribution tooling must still preserve all required copyright/license notices. `unicode-ident` additionally declares `Unicode-3.0` for Unicode-derived data and therefore requires the Unicode license obligations to be preserved when distributed.
 
-This ledger is governance evidence, not a substitute for legal advice. If TP distribution changes materially, the notice/attribution package must be reviewed again for that distribution form.
+This ledger is governance evidence, not a substitute for legal advice. If TP distribution changes materially (for example, vendoring source, redistributing modified dependency source, or shipping a commercial installer), the notice/attribution package must be reviewed again for that distribution form.
 
 ## Distribution policy
 
