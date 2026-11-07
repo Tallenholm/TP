@@ -338,7 +338,7 @@ fn bool_match_must_cover_both_values() {
         report
             .diagnostics
             .iter()
-            .any(|diagnostic| diagnostic.message.contains("non-exhaustive match; missing \`false\`")),
+            .any(|diagnostic| diagnostic.message.contains("non-exhaustive match; missing `false`")),
         "{:#?}",
         report.diagnostics
     );
@@ -403,7 +403,7 @@ fn refutable_enum_payload_pattern_does_not_cover_whole_variant() {
         report
             .diagnostics
             .iter()
-            .any(|diagnostic| diagnostic.message.contains("non-exhaustive match; missing \`Some\`")),
+            .any(|diagnostic| diagnostic.message.contains("non-exhaustive match; missing `Some`")),
         "{:#?}",
         report.diagnostics
     );
