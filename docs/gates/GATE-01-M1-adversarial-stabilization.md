@@ -43,7 +43,7 @@ Every finding must remain here until resolved. Do not delete findings after fixe
 | M1-007 | Major | Entry point | `main` shape is not fully validated statically; invalid parameter shape can survive until interpreter execution. | `fn main(x: i64) {}` | Define executable entry-point contract and enforce in semantic analysis. | OPEN |
 | M1-008 | Major | Literals/parser | Oversized integer parsing uses `.parse::<i64>().ok()?` after consuming the token, so a range failure can produce no diagnostic and the parser can recover by silently dropping the statement. `i64::MIN` unary-minus handling, float non-finite policy, raw-newline strings, escapes, and Unicode identifier policy also need hardening. | oversized integer statement; `-9223372036854775808`; huge float; raw newline string; Unicode boundary cases. | Define M1 boundary semantics and stable diagnostics; never silently discard an invalid literal. | OPEN |
 | M1-009 | Major | Pattern matching | Compile-time exhaustiveness is enforced only for enum matches. Non-exhaustive Bool/literal matches can pass checking and lower to an `otherwise` runtime trap, contradicting the design requirement for compile-time exhaustiveness checking. | `fn main(x: Bool) -> i64 { match x { true => 1 } }` can reach MIR runtime trap for `false`. | Require exhaustive finite-domain coverage where provable and require wildcard/default coverage for open/infinite literal domains; add unreachable/duplicate-arm policy tests. | OPEN |
-| M1-010 | Major | Name resolution / semantic consistency | Global value-name precedence is inconsistent across checker, HIR, and MIR. Function/enum-variant collisions and user declarations named `print` can be accepted yet resolve differently across stages, producing wrong HIR types or runtime behavior. | Checker call path prefers variant over function; HIR name/call paths prefer function; MIR treats any global whose name is in the variant set as an enum constructor; runtime reserves `print`. | Centralize value-name resolution, define/reject conflicting declarations and reserved builtin collisions, and prove checked/HIR/MIR resolution agrees. | OPEN |
+| M1-010 | Major | Name resolution / semantic consistency | Global value-name precedence was inconsistent across checker, HIR, and MIR. Function/enum-variant collisions and user declarations named `print` could be accepted yet resolve differently across stages. | Regression tests `function_and_enum_variant_value_names_cannot_collide` and `builtin_print_name_is_reserved`. | Reject ambiguous function/variant value names and reserve builtin `print`; the broader semantic-source refactor in M1-005 will carry checked global resolution into HIR/MIR. | RESOLVED |
 
 Severity may only be changed with documented reasoning. More findings will be added as review continues.
 
@@ -62,7 +62,7 @@ No repair is complete until its test has been observed failing for the intended 
 | M1-007 | pending | NOT RECORDED | NOT RECORDED | — |
 | M1-008 | pending | NOT RECORDED | NOT RECORDED | — |
 | M1-009 | pending | NOT RECORDED | NOT RECORDED | — |
-| M1-010 | pending | NOT RECORDED | NOT RECORDED | — |
+| M1-010 | `function_and_enum_variant_value_names_cannot_collide`; `builtin_print_name_is_reserved` | CI 42354716838: collision test failed with `diagnostics: []`; CI 42354802869: builtin test failed with `diagnostics: []` | CI 42354765665 green after function/variant rejection; CI 42354843025 green after builtin reservation | `d31237b5466a90504eeb342defd9d10b34e87904`, `fd6faf4c252054ca7739610a9f1452259f05c0fb` |
 
 ## 3.1 Completed adversarial review scope
 
@@ -83,7 +83,11 @@ The 2026-11-07 review explicitly inspected:
 - Rust manifests, lockfile policy, toolchain file, and CI workflow;
 - README capability claims.
 
-No Critical finding was identified in this pass. Major findings M1-001 through M1-010 remain blocking. A fresh whole-branch adversarial review remains mandatory after all repairs.
+No Critical finding was identified in this pass. Major findings M1-001 through M1-009 remain OPEN; M1-010 is RESOLVED with RED -> GREEN evidence. A fresh whole-branch adversarial review remains mandatory after all repairs.
+
+## 3.2 Execution rulings
+
+- **Ruling (repair order):** M1-010 was repaired immediately after discovery, before the larger M1-005 semantic-model refactor, because it was a narrow declaration-boundary guardrail that prevented known checker/HIR/MIR disagreement while shared semantic state is being redesigned. Cost if wrong: some of this rejection logic may later move into the centralized semantic collector, but its behavior and regression tests remain required.
 
 ## 4. Verification Commands
 
