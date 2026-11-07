@@ -467,6 +467,7 @@ impl HirLowerer {
                     HirPatternKind::Bind {
                         symbol,
                         name: name.clone(),
+                        ty: target.clone(),
                     }
                 }
             }
