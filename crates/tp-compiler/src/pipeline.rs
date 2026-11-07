@@ -64,6 +64,19 @@ impl Compiler {
     }
 
     fn run_mir(&self, mir: &MirModule) -> Result<RunReport, RunFailure> {
+        let Some(main) = mir.functions.iter().find(|function| function.name == "main") else {
+            return Err(RunFailure::Compile(vec![Diagnostic::error(
+                "TP-E0400",
+                "missing executable entry point `main`",
+            )]));
+        };
+        if !main.params.is_empty() {
+            return Err(RunFailure::Compile(vec![Diagnostic::error(
+                "TP-E0400",
+                "entry point `main` must not take parameters",
+            )]));
+        }
+
         let mut interpreter = Interpreter::new(mir);
         let value = interpreter.run_main().map_err(RunFailure::Runtime)?;
         Ok(RunReport {
