@@ -318,3 +318,16 @@ fn recursive_nominal_declaration_is_allowed_in_m1() {
     let report = check("enum List<T> { Cons(T, List<T>), Nil }");
     assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
 }
+
+#[test]
+fn main_must_not_take_parameters() {
+    let report = check("fn main(value: i64) { }");
+    assert!(
+        report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("entry point `main` must not take parameters")),
+        "{:#?}",
+        report.diagnostics
+    );
+}

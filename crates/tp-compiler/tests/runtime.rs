@@ -104,3 +104,19 @@ fn logical_operators_evaluate_rhs_when_required() {
         assert!(error.message.contains("division by zero"));
     }
 }
+
+#[test]
+fn run_requires_main_before_interpreter_execution() {
+    let error = Compiler::new()
+        .run_source("library.tp", "fn helper() -> i64 { 42 }")
+        .expect_err("run mode must require an entry point");
+    let RunFailure::Compile(diagnostics) = error else {
+        panic!("missing main must be a compile failure");
+    };
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("missing executable entry point `main`")),
+        "{diagnostics:#?}"
+    );
+}
