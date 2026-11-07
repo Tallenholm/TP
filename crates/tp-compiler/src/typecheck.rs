@@ -715,20 +715,21 @@ impl TypeChecker {
                 .iter()
                 .any(|previous| patterns_equivalent(previous, &arm.pattern));
             let coverage = self.check_pattern(&arm.pattern, &value_ty);
-            let duplicate = exact_duplicate || match &coverage {
-                PatternCoverage::Variant {
-                    name,
-                    irrefutable: true,
-                } => covered_variants.contains(name),
-                PatternCoverage::Bool(value) => covered_bools.contains(value),
-                PatternCoverage::Integer(value) => covered_integers.contains(value),
-                PatternCoverage::String(value) => covered_strings.contains(value),
-                PatternCoverage::CatchAll => catch_all,
-                PatternCoverage::Variant {
-                    irrefutable: false, ..
-                }
-                | PatternCoverage::Other => false,
-            };
+            let duplicate = exact_duplicate
+                || match &coverage {
+                    PatternCoverage::Variant {
+                        name,
+                        irrefutable: true,
+                    } => covered_variants.contains(name),
+                    PatternCoverage::Bool(value) => covered_bools.contains(value),
+                    PatternCoverage::Integer(value) => covered_integers.contains(value),
+                    PatternCoverage::String(value) => covered_strings.contains(value),
+                    PatternCoverage::CatchAll => catch_all,
+                    PatternCoverage::Variant {
+                        irrefutable: false, ..
+                    }
+                    | PatternCoverage::Other => false,
+                };
             let unreachable = previously_total || duplicate;
             if unreachable {
                 self.diagnostics.push(
