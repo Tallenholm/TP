@@ -330,3 +330,81 @@ fn main_must_not_take_parameters() {
         report.diagnostics
     );
 }
+
+#[test]
+fn bool_match_must_cover_both_values() {
+    let report = check("fn choose(x: Bool) -> i64 { match x { true => 1 } }");
+    assert!(
+        report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("non-exhaustive match; missing \`false\`")),
+        "{:#?}",
+        report.diagnostics
+    );
+}
+
+#[test]
+fn exhaustive_bool_match_is_allowed() {
+    let report =
+        check("fn choose(x: Bool) -> i64 { match x { true => 1, false => 0 } }");
+    assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
+}
+
+#[test]
+fn open_literal_domain_requires_catch_all() {
+    let report = check("fn choose(x: i64) -> i64 { match x { 1 => 1, 2 => 2 } }");
+    assert!(
+        report.diagnostics.iter().any(|diagnostic| diagnostic
+            .message
+            .contains("non-exhaustive match; add a wildcard or binding arm")),
+        "{:#?}",
+        report.diagnostics
+    );
+}
+
+#[test]
+fn open_literal_domain_with_wildcard_is_allowed() {
+    let report = check("fn choose(x: i64) -> i64 { match x { 1 => 1, _ => 0 } }");
+    assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
+}
+
+#[test]
+fn duplicate_or_post_catch_all_match_arms_are_unreachable() {
+    let duplicate =
+        check("fn choose(x: Bool) -> i64 { match x { true => 1, true => 2, false => 0 } }");
+    assert!(
+        duplicate
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("unreachable match arm")),
+        "{:#?}",
+        duplicate.diagnostics
+    );
+
+    let after_wildcard =
+        check("fn choose(x: i64) -> i64 { match x { _ => 0, 1 => 1 } }");
+    assert!(
+        after_wildcard
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("unreachable match arm")),
+        "{:#?}",
+        after_wildcard.diagnostics
+    );
+}
+
+#[test]
+fn refutable_enum_payload_pattern_does_not_cover_whole_variant() {
+    let report = check(
+        "enum Option<T> { Some(T), None } fn choose(x: Option<i64>) -> i64 { match x { Some(1) => 1, None => 0 } }",
+    );
+    assert!(
+        report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("non-exhaustive match; missing \`Some\`")),
+        "{:#?}",
+        report.diagnostics
+    );
+}
