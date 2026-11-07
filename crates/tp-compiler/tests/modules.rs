@@ -131,3 +131,74 @@ fn imported_nominal_types_struct_literals_and_enum_patterns_work() {
         .expect("qualified imported nominal types should execute");
     assert_eq!(run.value.as_i64(), Some(42));
 }
+
+#[test]
+fn module_lowering_order_is_deterministic() {
+    let path = fixture("diamond_main.tp");
+    let first = Compiler::new()
+        .lower_path(&path)
+        .expect("first module lowering should succeed");
+    let second = Compiler::new()
+        .lower_path(&path)
+        .expect("second module lowering should succeed");
+
+    let first_names: Vec<_> = first
+        .functions
+        .iter()
+        .map(|function| function.name.as_str())
+        .collect();
+    let second_names: Vec<_> = second
+        .functions
+        .iter()
+        .map(|function| function.name.as_str())
+        .collect();
+    assert_eq!(first_names, second_names);
+}
+
+#[cfg(unix)]
+#[test]
+fn symlinked_imports_share_one_canonical_module_identity() {
+    use std::{
+        fs,
+        os::unix::fs::symlink,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock")
+        .as_nanos();
+    let dir = std::env::temp_dir().join(format!(
+        "tp-module-symlink-{}-{nonce}",
+        std::process::id()
+    ));
+    fs::create_dir_all(&dir).expect("create temp fixture directory");
+
+    let real = dir.join("real.tp");
+    let alias = dir.join("alias.tp");
+    let main = dir.join("main.tp");
+    fs::write(&real, "fn value() -> i64 { 21 }\n").expect("write real module");
+    symlink(&real, &alias).expect("create module symlink");
+    fs::write(
+        &main,
+        "import real\nimport alias\nfn main() -> i64 { real.value() + alias.value() }\n",
+    )
+    .expect("write entry module");
+
+    let report = Compiler::new().check_path(&main);
+    assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
+    let canonical_real = real.canonicalize().expect("canonical real module");
+    let source_count = report
+        .sources
+        .iter()
+        .filter(|source| PathBuf::from(source.name()) == canonical_real)
+        .count();
+    assert_eq!(source_count, 1);
+
+    let run = Compiler::new()
+        .run_path(&main)
+        .expect("symlink aliases should share one module");
+    assert_eq!(run.value.as_i64(), Some(42));
+
+    fs::remove_dir_all(&dir).expect("remove temp fixture directory");
+}
