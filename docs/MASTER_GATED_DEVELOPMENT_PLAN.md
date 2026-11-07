@@ -119,6 +119,8 @@ Establish the rules and repository structure that every later person/agent must 
 
 All governance documents exist, agree with each other, and the repository owner has resolved the public/private visibility decision.
 
+Gate 0 is a governance-only gate. When Gate 0 changes no executable/compiler code, code-specific inherited checks such as compiler tests, formatter/linter runs, fuzzing, and performance verification may be recorded as `N/A` with rationale in the Gate 0 report. Repository/document consistency and authoritative GitHub state must still be verified directly.
+
 ---
 
 # Gate 1 — M1 Adversarial Stabilization
