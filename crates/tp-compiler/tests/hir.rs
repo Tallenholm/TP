@@ -64,7 +64,10 @@ fn hir_preserves_checked_global_resolution_kind() {
         }
     ));
 
-    let HirStmt::Expr { expr: print_call, .. } = &function.body.statements[2] else {
+    let HirStmt::Expr {
+        expr: print_call, ..
+    } = &function.body.statements[2]
+    else {
         panic!("expected print call");
     };
     let HirExprKind::Call { callee, .. } = &print_call.kind else {
