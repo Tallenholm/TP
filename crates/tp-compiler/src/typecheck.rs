@@ -457,13 +457,17 @@ impl TypeChecker {
                     self.semantic.record_local_use(expr.span, binding.id);
                     return binding.ty;
                 }
-                if let Some(function) = self.functions.get(name).cloned() {
-                    self.semantic
-                        .record_global(expr.span, HirGlobalKind::Function);
-                    return Type::Function {
-                        params: function.params,
-                        result: Box::new(function.result),
-                    };
+                if self.functions.contains_key(name) {
+                    self.diagnostics.push(
+                        Diagnostic::error(
+                            "TP-E0300",
+                            format!(
+                                "function `{name}` is callable but is not a first-class value in M1"
+                            ),
+                        )
+                        .with_primary(expr.span),
+                    );
+                    return Type::Unknown;
                 }
                 if let Some(variant) = self.variants.get(name).cloned() {
                     if variant.payload.is_empty() {
@@ -473,12 +477,14 @@ impl TypeChecker {
                     }
                 }
                 if name == "print" {
-                    self.semantic
-                        .record_global(expr.span, HirGlobalKind::Builtin);
-                    return Type::Function {
-                        params: vec![Type::Unknown],
-                        result: Box::new(Type::Unit),
-                    };
+                    self.diagnostics.push(
+                        Diagnostic::error(
+                            "TP-E0300",
+                            "`print` is callable but is not a first-class value in M1",
+                        )
+                        .with_primary(expr.span),
+                    );
+                    return Type::Unknown;
                 }
                 self.unknown_name(expr.span, name);
                 Type::Unknown
