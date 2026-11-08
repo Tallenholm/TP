@@ -10,6 +10,7 @@ use tp_compiler::{Compiler, RunFailure, Value};
 enum Outcome {
     CheckPass,
     CompileFail,
+    RunCompileFail,
     Run,
     RuntimeFail,
 }
@@ -64,6 +65,7 @@ fn parse_expectation_str(input: &str) -> Result<Expectation, String> {
                 outcome = Some(match raw_value {
                     "check_pass" => Outcome::CheckPass,
                     "compile_fail" => Outcome::CompileFail,
+                    "run_compile_fail" => Outcome::RunCompileFail,
                     "run" => Outcome::Run,
                     "runtime_fail" => Outcome::RuntimeFail,
                     other => return Err(format!("invalid outcome `{other}`")),
@@ -90,6 +92,9 @@ fn parse_expectation_str(input: &str) -> Result<Expectation, String> {
     match outcome {
         Outcome::CompileFail if diagnostics.is_empty() => {
             return Err("compile_fail requires `diagnostics`".to_owned());
+        }
+        Outcome::RunCompileFail if diagnostics.is_empty() => {
+            return Err("run_compile_fail requires `diagnostics`".to_owned());
         }
         Outcome::RuntimeFail if runtime_code.is_none() => {
             return Err("runtime_fail requires `runtime_code`".to_owned());
@@ -224,6 +229,26 @@ fn run_case(case: &Path) -> Result<(), String> {
                 ))
             }
         }
+        Outcome::RunCompileFail => match compiler.run_path(&main_path) {
+            Err(RunFailure::Compile(diagnostics)) => {
+                let actual = diagnostic_codes(&diagnostics);
+                if actual == expectation.diagnostics {
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "expected run-mode diagnostics {:?}, got {actual:?}",
+                        expectation.diagnostics
+                    ))
+                }
+            }
+            Err(RunFailure::Runtime(error)) => Err(format!(
+                "expected run-mode compile failure, got runtime error {error}"
+            )),
+            Ok(report) => Err(format!(
+                "expected run-mode compile failure, got value {:?}",
+                report.value
+            )),
+        },
         Outcome::Run => {
             let report = compiler
                 .run_path(&main_path)

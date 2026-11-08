@@ -23,6 +23,11 @@ diagnostics=TP-E0300
 ```
 
 ```text
+outcome=run_compile_fail
+diagnostics=TP-E0400
+```
+
+```text
 outcome=run
 value=i64:42
 ```
@@ -32,6 +37,8 @@ outcome=runtime_fail
 runtime_code=TP-E0500
 runtime_message=division by zero
 ```
+
+`run_compile_fail` runs the executable pipeline and expects compilation/entry-point failure before interpretation. It requires `diagnostics`.
 
 For `run`, `value` supports `unit`, `bool:true|false`, `i64:<n>`, `f64:<n>`, and `string:<text>`. A run case may omit `value` only when `stdout.txt` exists and the case intentionally freezes stdout only.
 
