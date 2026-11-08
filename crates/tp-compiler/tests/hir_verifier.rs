@@ -364,3 +364,131 @@ fn rejects_global_resolution_kind_that_differs_from_semantic_model() {
         "{errors:#?}"
     );
 }
+
+#[test]
+fn rejects_tampered_function_result_against_checked_signature() {
+    let snapshot = Compiler::new()
+        .analyze_source("main.tp", "fn main() -> i64 { 42 }")
+        .expect("valid program");
+    let mut hir = snapshot.hir().clone();
+    hir.functions[0].return_type = Type::Bool;
+    let errors = HirVerifier::verify_checked(&hir, snapshot.semantic(), snapshot.sources())
+        .expect_err("function return metadata must agree with checked signature");
+    assert!(
+        errors.iter().any(|error| matches!(
+            error.kind,
+            HirVerificationKind::FunctionSemanticMismatch { .. }
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_tampered_parameter_type_against_checked_binding() {
+    let snapshot = Compiler::new()
+        .analyze_source(
+            "main.tp",
+            "fn helper(x: i64) -> i64 { x } fn main() -> i64 { helper(7) }",
+        )
+        .expect("valid program");
+    let mut hir = snapshot.hir().clone();
+    hir.functions[0].params[0].ty = Type::Bool;
+    let errors = HirVerifier::verify_checked(&hir, snapshot.semantic(), snapshot.sources())
+        .expect_err("parameter type must agree with original checked binding");
+    assert!(
+        errors.iter().any(|error| matches!(
+            error.kind,
+            HirVerificationKind::ParameterSemanticMismatch { .. }
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_local_symbol_spoof_with_matching_type() {
+    let snapshot = Compiler::new()
+        .analyze_source("main.tp", "fn main() -> i64 { let x = 1; let y = 2; x }")
+        .expect("valid program");
+    let mut hir = snapshot.hir().clone();
+    let HirStmt::Let { symbol: y, .. } = &hir.functions[0].body.statements[1] else {
+        panic!("expected second binding");
+    };
+    let replacement = *y;
+    let HirStmt::Expr { expr, .. } = &mut hir.functions[0].body.statements[2] else {
+        panic!("expected final local expression");
+    };
+    expr.kind = HirExprKind::Local(replacement);
+    let errors = HirVerifier::verify_checked(&hir, snapshot.semantic(), snapshot.sources())
+        .expect_err("same-typed local alias must be rejected");
+    assert!(
+        errors.iter().any(|error| matches!(
+            error.kind,
+            HirVerificationKind::LocalSemanticMismatch { .. }
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_tampered_match_arm_binding_metadata() {
+    let snapshot = Compiler::new()
+        .analyze_source(
+            "main.tp",
+            "enum Opt<T> { Some(T), None } fn main() -> i64 { match Some(3) { Some(v) => v, None => 0 } }",
+        )
+        .expect("valid match");
+    let mut hir = snapshot.hir().clone();
+    let HirStmt::Expr { expr, .. } = &mut hir.functions[0].body.statements[0] else {
+        panic!("expected match expression");
+    };
+    let HirExprKind::Match { arms, .. } = &mut expr.kind else {
+        panic!("expected match kind");
+    };
+    let HirPatternKind::Variant { args, .. } = &mut arms[0].pattern.kind else {
+        panic!("expected variant pattern");
+    };
+    let HirPatternKind::Bind { ty, .. } = &mut args[0].kind else {
+        panic!("expected pattern binding");
+    };
+    *ty = Type::Bool;
+    let errors = HirVerifier::verify_checked(&hir, snapshot.semantic(), snapshot.sources())
+        .expect_err("pattern binding type must match checked semantics");
+    assert!(
+        errors.iter().any(|error| matches!(
+            error.kind,
+            HirVerificationKind::PatternSemanticMismatch { .. }
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_assignment_target_spoof_with_matching_type() {
+    let snapshot = Compiler::new()
+        .analyze_source(
+            "main.tp",
+            "fn main() -> i64 { var x = 1; var y = 2; y = 3; x }",
+        )
+        .expect("valid program");
+    let mut hir = snapshot.hir().clone();
+    let HirStmt::Let { symbol: x, .. } = &hir.functions[0].body.statements[0] else {
+        panic!("expected first binding");
+    };
+    let replacement = *x;
+    let HirStmt::Expr { expr, .. } = &mut hir.functions[0].body.statements[2] else {
+        panic!("expected assignment");
+    };
+    let HirExprKind::Assign { symbol, .. } = &mut expr.kind else {
+        panic!("expected assignment kind");
+    };
+    *symbol = replacement;
+    let errors = HirVerifier::verify_checked(&hir, snapshot.semantic(), snapshot.sources())
+        .expect_err("assignment must target original resolved binding");
+    assert!(
+        errors.iter().any(|error| matches!(
+            error.kind,
+            HirVerificationKind::LocalSemanticMismatch { .. }
+        )),
+        "{errors:#?}"
+    );
+}
