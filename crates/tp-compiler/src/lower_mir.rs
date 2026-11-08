@@ -128,6 +128,13 @@ impl FunctionBuilder {
         Operand::Local(local)
     }
 
+    fn capture_operand(&mut self, ty: &Type, operand: Operand) -> Operand {
+        match operand {
+            Operand::Constant(_) => operand,
+            Operand::Local(_) => self.temp_rvalue(ty.clone(), Rvalue::Use(operand)),
+        }
+    }
+
     fn lower_block_value(&mut self, block: &HirBlock) -> Option<Operand> {
         let mut tail = None;
         let last_index = block.statements.len().checked_sub(1);
@@ -238,7 +245,8 @@ impl FunctionBuilder {
                 },
             ),
             HirExprKind::Binary { op, left, right } => {
-                let left = self.lower_expr(left);
+                let left_operand = self.lower_expr(left);
+                let left = self.capture_operand(&left.ty, left_operand);
                 let right = self.lower_expr(right);
                 self.temp_rvalue(
                     expr.ty.clone(),
@@ -264,18 +272,33 @@ impl FunctionBuilder {
                     kind: HirGlobalKind::Variant,
                 } = &callee.kind
                 {
-                    let args = args.iter().map(|arg| self.lower_expr(arg)).collect();
+                    let mut lowered_args = Vec::with_capacity(args.len());
+                    for arg in args {
+                        let operand = self.lower_expr(arg);
+                        lowered_args.push(self.capture_operand(&arg.ty, operand));
+                    }
                     return self.temp_rvalue(
                         expr.ty.clone(),
                         Rvalue::Enum {
                             variant: name.clone(),
-                            args,
+                            args: lowered_args,
                         },
                     );
                 }
-                let callee = self.lower_expr(callee);
-                let args = args.iter().map(|arg| self.lower_expr(arg)).collect();
-                self.temp_rvalue(expr.ty.clone(), Rvalue::Call { callee, args })
+                let callee_operand = self.lower_expr(callee);
+                let callee = self.capture_operand(&callee.ty, callee_operand);
+                let mut lowered_args = Vec::with_capacity(args.len());
+                for arg in args {
+                    let operand = self.lower_expr(arg);
+                    lowered_args.push(self.capture_operand(&arg.ty, operand));
+                }
+                self.temp_rvalue(
+                    expr.ty.clone(),
+                    Rvalue::Call {
+                        callee,
+                        args: lowered_args,
+                    },
+                )
             }
             HirExprKind::If {
                 condition,
@@ -283,15 +306,19 @@ impl FunctionBuilder {
                 else_branch,
             } => self.lower_if(expr, condition, then_branch, else_branch.as_ref()),
             HirExprKind::StructLiteral { type_name, fields } => {
-                let fields = fields
-                    .iter()
-                    .map(|(name, value)| (name.clone(), self.lower_expr(value)))
-                    .collect();
+                let mut lowered_fields = Vec::with_capacity(fields.len());
+                for (name, value) in fields {
+                    let operand = self.lower_expr(value);
+                    lowered_fields.push((
+                        name.clone(),
+                        self.capture_operand(&value.ty, operand),
+                    ));
+                }
                 self.temp_rvalue(
                     expr.ty.clone(),
                     Rvalue::Struct {
                         type_name: type_name.clone(),
-                        fields,
+                        fields: lowered_fields,
                     },
                 )
             }
