@@ -67,6 +67,24 @@ pub enum HirVerificationKind {
         expected: Option<HirGlobalKind>,
         actual: HirGlobalKind,
     },
+    FunctionSemanticMismatch {
+        expected: Option<Type>,
+        actual: Type,
+    },
+    ParameterSemanticMismatch {
+        expected: Option<(SymbolId, Type)>,
+        actual_symbol: SymbolId,
+        actual_type: Type,
+    },
+    PatternSemanticMismatch {
+        expected: Option<(SymbolId, Type)>,
+        actual_symbol: SymbolId,
+        actual_type: Type,
+    },
+    LocalSemanticMismatch {
+        expected: Option<SymbolId>,
+        actual: SymbolId,
+    },
 }
 
 impl fmt::Display for HirVerificationKind {
@@ -137,6 +155,32 @@ impl fmt::Display for HirVerificationKind {
                     "HIR global kind {actual:?} differs from checked {expected:?}"
                 )
             }
+            Self::FunctionSemanticMismatch { expected, actual } => {
+                write!(f, "HIR function result {actual} differs from checked {expected:?}")
+            }
+            Self::ParameterSemanticMismatch {
+                expected,
+                actual_symbol,
+                actual_type,
+            } => write!(
+                f,
+                "HIR parameter {}: {actual_type} differs from checked {expected:?}",
+                actual_symbol.raw()
+            ),
+            Self::PatternSemanticMismatch {
+                expected,
+                actual_symbol,
+                actual_type,
+            } => write!(
+                f,
+                "HIR pattern {}: {actual_type} differs from checked {expected:?}",
+                actual_symbol.raw()
+            ),
+            Self::LocalSemanticMismatch { expected, actual } => write!(
+                f,
+                "HIR local resolution {} differs from checked {expected:?}",
+                actual.raw()
+            ),
         }
     }
 }
@@ -291,9 +335,38 @@ impl<'a> FunctionVerifier<'a> {
 
     fn verify_function(&mut self, function: &HirFunction) {
         self.check_span(function.span);
+        if let Some(semantic) = self.semantic {
+            let expected = semantic
+                .function(&function.name)
+                .map(|(_, return_type)| return_type.clone());
+            if expected.as_ref() != Some(&function.return_type) {
+                self.error(
+                    function.span,
+                    HirVerificationKind::FunctionSemanticMismatch {
+                        expected,
+                        actual: function.return_type.clone(),
+                    },
+                );
+            }
+        }
         self.begin_scope();
         for param in &function.params {
             self.check_span(param.span);
+            if let Some(semantic) = self.semantic {
+                let expected = semantic
+                    .binding(param.span)
+                    .map(|(id, checked_ty)| (id, checked_ty.clone()));
+                if expected.as_ref() != Some(&(param.symbol, param.ty.clone())) {
+                    self.error(
+                        param.span,
+                        HirVerificationKind::ParameterSemanticMismatch {
+                            expected,
+                            actual_symbol: param.symbol,
+                            actual_type: param.ty.clone(),
+                        },
+                    );
+                }
+            }
             self.declare(param.symbol, param.ty.clone(), false, param.span);
         }
         self.verify_block(&function.body);
@@ -393,6 +466,7 @@ impl<'a> FunctionVerifier<'a> {
             HirExprKind::String(_) => self.check_literal(expr, Type::String),
             HirExprKind::Local(symbol) => {
                 self.check_local(*symbol, &expr.ty, expr.span);
+                self.check_local_resolution(expr.span, *symbol);
             }
             HirExprKind::Global { kind, .. } => {
                 if let Some(semantic) = self.semantic {
@@ -416,6 +490,7 @@ impl<'a> FunctionVerifier<'a> {
             HirExprKind::Assign { symbol, value } => {
                 // Assignment RHS is evaluated before mutating the target.
                 self.verify_expr(value);
+                self.check_local_resolution(expr.span, *symbol);
                 if let Some(binding) = self.visible.get(symbol).cloned() {
                     if !binding.mutable {
                         self.error(
@@ -471,6 +546,21 @@ impl<'a> FunctionVerifier<'a> {
         self.check_span(pattern.span);
         match &pattern.kind {
             HirPatternKind::Bind { symbol, ty, .. } => {
+                if let Some(semantic) = self.semantic {
+                    let expected = semantic
+                        .binding(pattern.span)
+                        .map(|(id, checked_ty)| (id, checked_ty.clone()));
+                    if expected.as_ref() != Some(&(*symbol, ty.clone())) {
+                        self.error(
+                            pattern.span,
+                            HirVerificationKind::PatternSemanticMismatch {
+                                expected,
+                                actual_symbol: *symbol,
+                                actual_type: ty.clone(),
+                            },
+                        );
+                    }
+                }
                 self.declare(*symbol, ty.clone(), false, pattern.span);
             }
             HirPatternKind::Variant { args, .. } => {
@@ -506,6 +596,18 @@ impl<'a> FunctionVerifier<'a> {
                     actual: condition.ty.clone(),
                 },
             );
+        }
+    }
+
+    fn check_local_resolution(&mut self, span: Span, actual: SymbolId) {
+        if let Some(semantic) = self.semantic {
+            let expected = semantic.local_use(span);
+            if expected != Some(actual) {
+                self.error(
+                    span,
+                    HirVerificationKind::LocalSemanticMismatch { expected, actual },
+                );
+            }
         }
     }
 
