@@ -19,6 +19,8 @@ M1 executable `main`:
 
 A missing run-mode entry point or invalid `main` parameter shape is a compile failure in diagnostic family `TP-E0400`, before interpreter execution.
 
+Run mode does not serialize or print `main`'s return value automatically. A nominal struct/enum return is a valid successful execution result even though the CLI currently exposes program stdout rather than a textual serialization of the returned value.
+
 ## Runtime traps
 
 A program that passes static checking may still encounter defined runtime traps. M1 uses diagnostic code `TP-E0500` for interpreter/runtime traps.
@@ -46,7 +48,7 @@ Primitive formatting is:
 - finite `f64` → ordinary human-readable decimal representation;
 - `String` → the string contents with no added quotes.
 
-Structs, enums, and function values are not printable in M1. This intentionally avoids freezing bootstrap/interpreter-internal formatting as a language contract. A richer display/formatting protocol belongs to later design.
+Structs and enums are not printable in M1. Functions/builtins are not first-class M1 values at all. This intentionally avoids freezing bootstrap/interpreter-internal formatting as a language contract. A richer display/formatting protocol belongs to later design.
 
 ## Recursion resource limitation
 

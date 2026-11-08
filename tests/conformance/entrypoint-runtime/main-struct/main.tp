@@ -1,0 +1,2 @@
+struct User { id: i64 }
+fn main() -> User { User { id: 42 } }

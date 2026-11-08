@@ -21,6 +21,8 @@ Functions are declared at module scope. M1 collects function signatures before c
 
 Calls require exact argument count and compatible argument types. M1 has no overloading or implicit argument conversion.
 
+Named functions and builtins are **callable symbols, not first-class M1 values**. M1 does not provide function-type source syntax, closures/lambdas, higher-order parameters, higher-order return values, or storing a function in a local. The bootstrap compiler/interpreter may internally represent a callee as a function object; that representation is not part of the TP language contract.
+
 M1 recursion is semantically allowed. The M1 interpreter currently uses the host Rust stack; resource-depth limitations are documented separately.
 
 Function parameters are immutable local bindings.
