@@ -109,7 +109,9 @@ fn diamond_graph_has_one_canonical_shared_module_and_two_incoming_edges() {
     let query = Compiler::new()
         .analyze_path(&fixture("diamond_main.tp"))
         .expect("diamond graph should load");
-    let graph = query.module_graph().expect("file-backed query has module graph");
+    let graph = query
+        .module_graph()
+        .expect("file-backed query has module graph");
     assert_eq!(graph.nodes().len(), 4);
     let shared = graph
         .nodes()
@@ -117,10 +119,17 @@ fn diamond_graph_has_one_canonical_shared_module_and_two_incoming_edges() {
         .find(|node| node.id.path().ends_with("diamond_shared.tp"))
         .expect("shared module");
     assert_eq!(
-        graph.edges().iter().filter(|edge| edge.to == shared.id).count(),
+        graph
+            .edges()
+            .iter()
+            .filter(|edge| edge.to == shared.id)
+            .count(),
         2
     );
-    let source = query.sources().get(shared.source).expect("canonical source");
+    let source = query
+        .sources()
+        .get(shared.source)
+        .expect("canonical source");
     assert_eq!(std::path::Path::new(source.name()), shared.id.path());
 }
 
