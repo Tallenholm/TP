@@ -22,7 +22,10 @@ fn valid_hir_with_nested_shadowing_passes() {
 #[test]
 fn rejects_duplicate_parameter_symbol() {
     let mut hir = Compiler::new()
-        .lower_source("main.tp", "fn main(x: i64) -> i64 { x }")
+        .lower_source(
+            "main.tp",
+            "fn helper(x: i64) -> i64 { x } fn main() -> i64 { helper(1) }",
+        )
         .expect("valid M1 source must lower");
     let param = hir.functions[0].params[0].clone();
     hir.functions[0].params.push(param.clone());
