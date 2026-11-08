@@ -356,3 +356,82 @@ fn public_interpreter_rejects_duplicate_function_mir() {
         .expect_err("direct execution must reject duplicate callable names");
     assert_eq!(error.code, "TP-E0600");
 }
+
+#[test]
+fn rejects_returning_a_local_before_assignment() {
+    let mut mir = sample();
+    let function = &mut mir.functions[0];
+    let entry = function.entry;
+    function.blocks[entry.0 as usize].statements.clear();
+    let errors = MirVerifier::verify(&mir).expect_err("local was never assigned");
+    assert!(
+        errors.iter().any(|error| matches!(
+            &error.kind,
+            MirVerificationKind::ReadBeforeAssignment { .. }
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_missing_assignment_on_one_branch_of_a_join() {
+    let mut mir = Compiler::new()
+        .lower_mir_source(
+            "main.tp",
+            "fn main() -> i64 { if true { 1 } else { 2 } }",
+        )
+        .expect("valid if must lower");
+    let function = &mut mir.functions[0];
+    let branch = function
+        .blocks
+        .iter()
+        .find_map(|block| match &block.terminator {
+            Terminator::Branch { then_block, .. } => Some(*then_block),
+            _ => None,
+        })
+        .expect("if contains a then branch");
+    let result_local = function
+        .blocks
+        .iter()
+        .find_map(|block| match &block.terminator {
+            Terminator::Return(Some(Operand::Local(local))) => Some(*local),
+            _ => None,
+        })
+        .expect("return reads join result");
+    let statements = &mut function.blocks[branch.0 as usize].statements;
+    let before = statements.len();
+    statements.retain(|statement| {
+        !matches!(statement, MirStatement::Assign { target, .. } if *target == result_local)
+    });
+    assert!(statements.len() < before, "test must remove a join assignment");
+    let errors = MirVerifier::verify(&mir).expect_err("branch join reads an unassigned local");
+    assert!(
+        errors.iter().any(|error| matches!(
+            &error.kind,
+            MirVerificationKind::ReadBeforeAssignment { local, .. } if *local == result_local
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn accepts_match_arm_bindings_as_initialized_on_success_edges() {
+    let mir = Compiler::new()
+        .lower_mir_source(
+            "main.tp",
+            "enum Opt<T> { Some(T), None } fn main() -> i64 { match Some(3) { Some(v) => v, None => 0 } }",
+        )
+        .expect("valid enum match must lower");
+    assert!(MirVerifier::verify(&mir).is_ok());
+}
+
+#[test]
+fn accepts_initialized_mutable_locals_through_loops() {
+    let mir = Compiler::new()
+        .lower_mir_source(
+            "main.tp",
+            "fn main() -> i64 { var x = 0; while x < 3 { x = x + 1; } x }",
+        )
+        .expect("valid loop must lower");
+    assert!(MirVerifier::verify(&mir).is_ok());
+}
