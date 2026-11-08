@@ -1,6 +1,6 @@
 use tp_compiler::{
-    BlockId, Compiler, LocalId, MirModule, MirStatement, MirVerificationKind, MirVerifier, Operand,
-    Rvalue, Terminator,
+    BlockId, Compiler, Constant, LocalId, MirModule, MirPattern, MirStatement, MirVerificationKind,
+    MirVerifier, Operand, Rvalue, Terminator,
 };
 
 fn sample() -> MirModule {
@@ -115,6 +115,136 @@ fn rejects_invalid_parameter_local() {
         errors.iter().any(|error| matches!(
             &error.kind,
             MirVerificationKind::InvalidParameterLocal { local } if *local == LocalId(999)
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_empty_block_table() {
+    let mut mir = sample();
+    mir.functions[0].blocks.clear();
+    let errors = MirVerifier::verify(&mir).expect_err("empty CFG must be rejected");
+    assert!(
+        errors.iter().any(|error| matches!(
+            &error.kind,
+            MirVerificationKind::InvalidEntry { entry } if *entry == BlockId(0)
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_duplicate_parameter_local() {
+    let mut mir = Compiler::new()
+        .lower_mir_source(
+            "main.tp",
+            "fn helper(x: i64) -> i64 { x } fn main() -> i64 { helper(7) }",
+        )
+        .expect("valid helper should lower");
+    let helper = mir
+        .functions
+        .iter_mut()
+        .find(|f| f.name == "helper")
+        .unwrap();
+    let parameter = helper.params[0];
+    helper.params.push(parameter);
+    let errors = MirVerifier::verify(&mir).expect_err("duplicate param must be rejected");
+    assert!(
+        errors.iter().any(|error| matches!(
+            &error.kind,
+            MirVerificationKind::DuplicateParameterLocal { local } if *local == parameter
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_invalid_branch_operand_and_successor() {
+    let mut mir = sample();
+    let function = &mut mir.functions[0];
+    let entry = function.entry;
+    function.blocks[entry.0 as usize].terminator = Terminator::Branch {
+        condition: Operand::Local(LocalId(999)),
+        then_block: BlockId(999),
+        else_block: entry,
+    };
+    let errors = MirVerifier::verify(&mir).expect_err("bad branch must be rejected");
+    assert!(
+        errors.iter().any(|error| matches!(
+            &error.kind,
+            MirVerificationKind::InvalidLocalReference { local, .. } if *local == LocalId(999)
+        )),
+        "{errors:#?}"
+    );
+    assert!(
+        errors.iter().any(|error| matches!(
+            &error.kind,
+            MirVerificationKind::InvalidSuccessor { target, .. } if *target == BlockId(999)
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_nested_match_binding_local() {
+    let mut mir = sample();
+    let function = &mut mir.functions[0];
+    let entry = function.entry;
+    function.blocks[entry.0 as usize].terminator = Terminator::Match {
+        value: Operand::Constant(Constant::Bool(true)),
+        arms: vec![(
+            MirPattern::Variant {
+                name: "Example".to_owned(),
+                args: vec![MirPattern::Bind(LocalId(999))],
+            },
+            entry,
+        )],
+        otherwise: entry,
+    };
+    let errors = MirVerifier::verify(&mir).expect_err("bad match binding must be rejected");
+    assert!(
+        errors.iter().any(|error| matches!(
+            &error.kind,
+            MirVerificationKind::InvalidLocalReference { local, .. } if *local == LocalId(999)
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_invalid_return_operand() {
+    let mut mir = sample();
+    let function = &mut mir.functions[0];
+    let entry = function.entry;
+    function.blocks[entry.0 as usize].terminator =
+        Terminator::Return(Some(Operand::Local(LocalId(999))));
+    let errors = MirVerifier::verify(&mir).expect_err("bad return must be rejected");
+    assert!(
+        errors.iter().any(|error| matches!(
+            &error.kind,
+            MirVerificationKind::InvalidLocalReference { local, .. } if *local == LocalId(999)
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_undeclared_assignment_target() {
+    let mut mir = sample();
+    let function = &mut mir.functions[0];
+    let entry = function.entry;
+    function.blocks[entry.0 as usize]
+        .statements
+        .push(MirStatement::Assign {
+            target: LocalId(999),
+            value: Rvalue::Use(Operand::Constant(Constant::Unit)),
+        });
+    let errors = MirVerifier::verify(&mir).expect_err("unknown target must be rejected");
+    assert!(
+        errors.iter().any(|error| matches!(
+            &error.kind,
+            MirVerificationKind::InvalidLocalReference { local, .. } if *local == LocalId(999)
         )),
         "{errors:#?}"
     );
