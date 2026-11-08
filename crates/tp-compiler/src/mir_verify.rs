@@ -1,8 +1,8 @@
 use std::{collections::HashSet, fmt};
 
 use crate::{
-    BlockId, Constant, LocalId, MirFunction, MirModule, MirPattern, MirStatement, Operand,
-    Rvalue, Terminator, Type,
+    BlockId, Constant, LocalId, MirFunction, MirModule, MirPattern, MirStatement, Operand, Rvalue,
+    Terminator, Type,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -13,17 +13,46 @@ pub struct MirVerificationError {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MirVerificationKind {
-    InvalidEntry { entry: BlockId },
-    BlockIndexMismatch { index: usize, actual: BlockId },
-    LocalIndexMismatch { index: usize, actual: LocalId },
-    InvalidSuccessor { from: BlockId, target: BlockId },
-    InvalidParameterLocal { local: LocalId },
-    DuplicateParameterLocal { local: LocalId },
-    InvalidLocalReference { block: BlockId, local: LocalId },
-    DuplicateFunction { name: String },
-    InvalidBranchCondition { block: BlockId, actual: Type },
-    InvalidReturnType { block: BlockId, expected: Type, actual: Type },
-    UnknownFunctionReference { name: String },
+    InvalidEntry {
+        entry: BlockId,
+    },
+    BlockIndexMismatch {
+        index: usize,
+        actual: BlockId,
+    },
+    LocalIndexMismatch {
+        index: usize,
+        actual: LocalId,
+    },
+    InvalidSuccessor {
+        from: BlockId,
+        target: BlockId,
+    },
+    InvalidParameterLocal {
+        local: LocalId,
+    },
+    DuplicateParameterLocal {
+        local: LocalId,
+    },
+    InvalidLocalReference {
+        block: BlockId,
+        local: LocalId,
+    },
+    DuplicateFunction {
+        name: String,
+    },
+    InvalidBranchCondition {
+        block: BlockId,
+        actual: Type,
+    },
+    InvalidReturnType {
+        block: BlockId,
+        expected: Type,
+        actual: Type,
+    },
+    UnknownFunctionReference {
+        name: String,
+    },
 }
 
 impl fmt::Display for MirVerificationKind {
