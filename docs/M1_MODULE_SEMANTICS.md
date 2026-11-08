@@ -1,6 +1,6 @@
 # M1 Module Semantics
 
-**Status:** Gate 1 stabilized behavior; subject to Gate 2 semantic freeze  
+**Status:** Gate 2 frozen M1 semantic surface  
 **Scope:** M1 executable core only
 
 This document records the module behavior implemented and tested during Gate 1. It is intentionally narrower than the eventual TP package/module system.
@@ -126,9 +126,9 @@ The following are outside the M1 module surface:
 
 Because M1 imports only sibling module identifiers, directly expressing two same-named modules from different directories is not part of the current grammar. That case belongs to the later package/module design rather than being silently guessed in M1.
 
-## Gate 1 evidence
+## Verification evidence
 
-The Gate 1 module regression matrix covers:
+Gate 1 regression coverage plus the Gate 2 implementation-independent module corpus cover:
 
 - import parsing and aliases;
 - valid sibling function calls;

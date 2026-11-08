@@ -22,12 +22,12 @@
 | G2-R07 | Freeze `if` and `while` semantics | PASS | `if`/`while` corpus passed CI 42438971732; literal `while true` is frozen as definitely diverging. |
 | G2-R08 | Freeze structs, enums, generics, and optional sugar semantics | PASS | Nominal/generic data corpus and `docs/M1_DATA_AND_PATTERN_SEMANTICS.md` passed pinned/locked CI 42439179273. |
 | G2-R09 | Freeze pattern matching and exhaustiveness semantics | PASS | Pattern/exhaustiveness corpus and `docs/M1_DATA_AND_PATTERN_SEMANTICS.md` passed pinned/locked CI 42439179273. |
-| G2-R10 | Freeze module/import/alias/canonical-identity semantics | VERIFYING | Multi-file module corpus added; awaiting Task 6 CI. |
-| G2-R11 | Freeze executable entry point and runtime trap model | VERIFYING | Entry-point/runtime/print corpus and `docs/M1_RUNTIME_SEMANTICS.md` added; harness `run_compile_fail` outcome and G2-D04 print restriction pending RED → GREEN. |
-| G2-R12 | Create implementation-independent `tests/conformance/` corpus organized by language feature | FAIL | Harness foundation exists; full feature corpus is still being built. |
-| G2-R13 | Record expected compile result, diagnostics, runtime value/output for every applicable conformance case | FAIL | Corpus metadata format is defined and validated; feature coverage is incomplete. |
-| G2-R14 | Achieve 100% conformance pass on pinned Rust 1.85.0 with locked dependencies | FAIL | Requires completed corpus and fresh CI. |
-| G2-R15 | Resolve every M1 semantic ambiguity and keep zero unresolved Critical/Major findings | FAIL | Gate 2 semantic review has not yet completed. |
+| G2-R10 | Freeze module/import/alias/canonical-identity semantics | PASS | Multi-file module corpus and `docs/M1_MODULE_SEMANTICS.md` passed pinned/locked CI 42439452953. |
+| G2-R11 | Freeze executable entry point and runtime trap model | PASS | Entry-point/runtime/primitive-print corpus and `docs/M1_RUNTIME_SEMANTICS.md` passed CI 42439452953 after run-mode harness support and G2-D04 repair. |
+| G2-R12 | Create implementation-independent `tests/conformance/` corpus organized by language feature | PASS | Corpus contains 138 cases across all 10 planned semantic feature groups plus harness seeds; runner uses only the public compiler API. |
+| G2-R13 | Record expected compile result, diagnostics, runtime value/output for every applicable conformance case | PASS | All 138 case directories contain validated `expect.txt`; applicable cases additionally freeze diagnostic codes, runtime values/traps, and exact stdout. |
+| G2-R14 | Achieve 100% conformance pass on pinned Rust 1.85.0 with locked dependencies | PASS | 138/138 conformance cases plus full workspace passed pinned Rust 1.85.0 / `--locked` CI 42439452953. Final exact-head closure CI is still required by G2-R17 after documentation/review updates. |
+| G2-R15 | Resolve every M1 semantic ambiguity and keep zero unresolved Critical/Major findings | VERIFYING | G2-D01 through G2-D04 are resolved; final whole-branch semantic review still required. |
 | G2-R16 | Audit README/examples/spec-facing docs against frozen M1 behavior | FAIL | Final documentation audit pending. |
 | G2-R17 | Complete final M1 semantic review and fresh CI | FAIL | Pending after all freeze decisions and conformance repairs. |
 
@@ -40,7 +40,7 @@ Every ambiguity discovered during Gate 2 must be recorded here until explicitly 
 | G2-D01 | Major | Equality | Should M1 freeze the interpreter's broad Rust-derived structural/function equality for all compatible values? | **No.** M1 equality is defined only for `Unit`, `Bool`, matching numeric primitives, and `String`. Nominal struct/enum values and function values are not equality-comparable in M1; richer equality is deferred to a deliberate later design. | RED CI 42438388839 accepted enum equality with no diagnostics; GREEN CI 42438445377 after checker restriction. | RESOLVED |
 | G2-D02 | Major | `while` / divergence | Should a literal `while true { ... }` be treated as definitely diverging in M1? | **Yes.** M1 has no `break`/`continue`; a literal-`true` loop cannot fall through. It has internal `Never` flow type and may satisfy any function result, while non-literal `while` remains potentially fallthrough/`Unit`. | RED CI 42438920554: `literal-true-while-diverges` got TP-E0300; GREEN CI 42438971732 after checker repair. | RESOLVED |
 | G2-D03 | Major | Evaluation order / MIR value capture | Does left-to-right evaluation preserve each operand/argument/field value at its evaluation point, or may a later mutation change what an earlier operand observes? | **Values are captured when evaluated.** M1 evaluates ordinary binary operands, call callee/arguments, enum payloads, and struct field initializers left-to-right; a later mutation cannot retroactively change an earlier value. | RED CI 42438765200: `(x = 1) + (x = 2)` produced 4 (case encoded aggregate expected 32, got 42); GREEN CI 42438971732 after MIR sequence-point capture. | RESOLVED |
-| G2-D04 | Major | Builtin `print` | Should M1 freeze Rust-side formatting for functions/structs/enums because the interpreter can currently print them? | **No.** M1 `print` accepts exactly one primitive value (`Unit`, `Bool`, `i64`, `f64`, `String`). Nominal/function formatting is deferred to a later deliberate formatting/display design. | Task 6 conformance RED pending. | ACTIVE |
+| G2-D04 | Major | Builtin `print` | Should M1 freeze Rust-side formatting for functions/structs/enums because the interpreter can currently print them? | **No.** M1 `print` accepts exactly one primitive value (`Unit`, `Bool`, `i64`, `f64`, `String`). Nominal/function formatting is deferred to a later deliberate formatting/display design. | RED CI 42439398693: `print(On)` compiled with no diagnostics; GREEN CI 42439452953 after checker restriction. | RESOLVED |
 
 ## 3. Test-Driven Evidence
 
@@ -51,6 +51,8 @@ For any behavior changed during Gate 2, retain RED → GREEN evidence. Pure free
 | G2-T01 | Conformance harness parser/discovery + seed cases | CI 42437796541: compile failed because `parse_expectation_str`, `discover_cases`, and `run_case` did not exist | CI 42437909426: pinned/locked full workflow PASS | `2373079344e8804f0178ca83bdd3218d27d13d3e` + formatting `711b2b7deef1182f3588832ac3e23ffb6601e6ec` |
 | G2-T03 | Capture left-to-right operand/argument values at MIR sequence points | CI 42438765200: binary evaluation-order conformance expected aggregate 32, got 42 because both operands reread the mutated local | CI 42438971732: evaluation-order/call-argument corpus PASS | `e9b786217c9f81cc8f47d63db318adfc415f669c` + formatting `1b56dcea442d6357371c0a7cdb0e011d642eafd0` |
 | G2-T04 | Treat literal `while true` as definite divergence | CI 42438920554: valid diverging function rejected with TP-E0300 | CI 42438971732: literal-true and nonliteral-loop boundary cases PASS | `64b5d2d72e9d87cb404012e9f3d7cb2fd0a32397` |
+| G2-T05 | Distinguish run-mode compile failures in conformance | CI 42439333570: `run_compile_fail` was an invalid harness outcome | CI 42439452953: missing/invalid `main` run-mode cases PASS | `21d2fd83bac1b6e5ae38b0af2df6eb74ff2f84a8` |
+| G2-T06 | Restrict bootstrap `print` to primitive values | CI 42439398693: nominal enum printing produced no diagnostic | CI 42439452953: primitive print output + nominal/function rejection cases PASS | `a96842335426041d0f9fd3c5d617785e39751c89` |
 | G2-T02 | Restrict M1 equality to explicit comparable primitives | CI 42438388839: enum equality case expected TP-E0300 but received no diagnostics | CI 42438445377: primitive equality passes and struct/enum/function equality rejects | `195901f8722621e2bfa175c9b06ae16157bdd2dd` |
 
 ## 4. Verification Commands
@@ -67,12 +69,12 @@ The final run must also execute the complete independent M1 conformance corpus a
 
 ## 5. CI Evidence
 
-Harness foundation passed pinned/locked CI **42437909426** on Rust 1.85.0. Lexical/precedence freeze passed CI **42438222995** after correcting a fixture-encoding mistake that had accidentally encoded a valid escaped backslash instead of the intended invalid escape. Equality decision G2-D01 completed RED **42438388839** → GREEN **42438445377**. Full value/numeric/string/Unicode freeze passed CI **42438618212**. Task 4 evaluation/divergence repairs completed RED **42438765200** / **42438920554** → GREEN **42438971732**. Data/generic/pattern freeze passed CI **42439179273**.
+Harness foundation passed pinned/locked CI **42437909426** on Rust 1.85.0. Lexical/precedence freeze passed CI **42438222995** after correcting a fixture-encoding mistake that had accidentally encoded a valid escaped backslash instead of the intended invalid escape. Equality decision G2-D01 completed RED **42438388839** → GREEN **42438445377**. Full value/numeric/string/Unicode freeze passed CI **42438618212**. Task 4 evaluation/divergence repairs completed RED **42438765200** / **42438920554** → GREEN **42438971732**. Data/generic/pattern freeze passed CI **42439179273**. Module/runtime freeze completed harness RED **42439333570**, print RED **42439398693**, and full GREEN **42439452953** with 138/138 cases.
 
 ## 6. Conformance Evidence
 
 **Required location:** `tests/conformance/`  
-**Cases passed:** 115 / 115 current cases; final module/runtime slice still pending
+**Cases passed:** 138 / 138 complete planned feature corpus
 **Cases failed:** none retained; any mismatch becomes a semantic decision/finding  
 **Known exclusions:** none accepted unless explicitly justified in this report.
 

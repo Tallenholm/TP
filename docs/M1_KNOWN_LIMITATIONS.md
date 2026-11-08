@@ -1,9 +1,9 @@
 # M1 Known Limitations
 
-**Status:** documented Gate 1 limitations; subject to later gates and Gate 2 semantic freeze  
+**Status:** Gate 2 frozen M1 known limitations; later gates may deliberately supersede them  
 **Scope:** M1 executable core
 
-This file records known behavior that is intentionally **not** being represented as a completed capability. None of the items below is an unresolved Gate 1 Critical/Major correctness finding.
+This file records known behavior that is intentionally **not** being represented as a completed capability. None of the items below is an unresolved Gate 2 Critical/Major semantic finding.
 
 ## Diagnostic presentation
 
