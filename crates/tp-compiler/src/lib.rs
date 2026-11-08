@@ -46,7 +46,7 @@ pub use mir::{
 pub use mir_verify::{MirVerificationError, MirVerificationKind, MirVerifier};
 pub use module_loader::{ModuleLoadReport, ModuleLoader};
 pub use parser::{ParseResult, Parser};
-pub use pipeline::{CompileReport, Compiler, RunFailure, RunReport};
+pub use pipeline::{CompilationSnapshot, CompileReport, Compiler, RunFailure, RunReport};
 pub use semantic::SemanticModel;
 pub use source::{LineCol, SourceFile, SourceId, SourceManager, Span};
 pub use symbol::{Binding, Scopes, SymbolId};

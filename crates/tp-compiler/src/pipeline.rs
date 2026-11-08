@@ -14,6 +14,43 @@ impl Compiler {
         Self
     }
 
+    /// A checked, immutable, noncached snapshot for tooling and analysis.
+    pub fn analyze_source(
+        &self,
+        name: &str,
+        source: &str,
+    ) -> Result<CompilationSnapshot, Vec<Diagnostic>> {
+        Self::snapshot(self.checked_module(name, source)?)
+    }
+
+    pub fn analyze_path(&self, path: &Path) -> Result<CompilationSnapshot, Vec<Diagnostic>> {
+        Self::snapshot(self.checked_path_module(path)?)
+    }
+
+    fn snapshot(checked: CheckedModule) -> Result<CompilationSnapshot, Vec<Diagnostic>> {
+        let hir = Self::verified_hir(&checked)?;
+        let mir = Self::verified_mir(&hir)?;
+        Ok(CompilationSnapshot {
+            sources: checked.sources,
+            module: checked.module,
+            semantic: checked.semantic,
+            hir,
+            mir,
+        })
+    }
+
+    fn verified_hir(checked: &CheckedModule) -> Result<HirModule, Vec<Diagnostic>> {
+        let hir = HirLowerer::lower(&checked.module, &checked.semantic);
+        HirVerifier::verify(&hir).map_err(hir_verification_diagnostics)?;
+        Ok(hir)
+    }
+
+    fn verified_mir(hir: &HirModule) -> Result<MirModule, Vec<Diagnostic>> {
+        let mir = MirLowerer::lower(hir);
+        MirVerifier::verify(&mir).map_err(mir_verification_diagnostics)?;
+        Ok(mir)
+    }
+
     pub fn check_source(&self, name: &str, source: &str) -> CompileReport {
         let source_file = SourceFile::new(name, source);
         let mut sources = SourceManager::default();
@@ -52,30 +89,22 @@ impl Compiler {
 
     pub fn lower_source(&self, name: &str, source: &str) -> Result<HirModule, Vec<Diagnostic>> {
         let checked = self.checked_module(name, source)?;
-        let hir = HirLowerer::lower(&checked.module, &checked.semantic);
-        HirVerifier::verify(&hir).map_err(hir_verification_diagnostics)?;
-        Ok(hir)
+        Self::verified_hir(&checked)
     }
 
     pub fn lower_path(&self, path: &Path) -> Result<HirModule, Vec<Diagnostic>> {
         let checked = self.checked_path_module(path)?;
-        let hir = HirLowerer::lower(&checked.module, &checked.semantic);
-        HirVerifier::verify(&hir).map_err(hir_verification_diagnostics)?;
-        Ok(hir)
+        Self::verified_hir(&checked)
     }
 
     pub fn lower_mir_source(&self, name: &str, source: &str) -> Result<MirModule, Vec<Diagnostic>> {
         let hir = self.lower_source(name, source)?;
-        let mir = MirLowerer::lower(&hir);
-        MirVerifier::verify(&mir).map_err(mir_verification_diagnostics)?;
-        Ok(mir)
+        Self::verified_mir(&hir)
     }
 
     pub fn lower_mir_path(&self, path: &Path) -> Result<MirModule, Vec<Diagnostic>> {
         let hir = self.lower_path(path)?;
-        let mir = MirLowerer::lower(&hir);
-        MirVerifier::verify(&mir).map_err(mir_verification_diagnostics)?;
-        Ok(mir)
+        Self::verified_mir(&hir)
     }
 
     pub fn run_source(&self, name: &str, source: &str) -> Result<RunReport, RunFailure> {
@@ -118,6 +147,8 @@ impl Compiler {
 
     fn checked_module(&self, name: &str, source: &str) -> Result<CheckedModule, Vec<Diagnostic>> {
         let source_file = SourceFile::new(name, source);
+        let mut sources = SourceManager::default();
+        sources.insert(source_file.clone());
         let lexed = Lexer::new(&source_file).lex();
         let mut diagnostics = lexed.diagnostics;
 
@@ -134,6 +165,7 @@ impl Compiler {
             Ok(CheckedModule {
                 module,
                 semantic: checked.semantic,
+                sources,
             })
         } else {
             Err(checked.diagnostics)
@@ -141,12 +173,17 @@ impl Compiler {
     }
 
     fn checked_path_module(&self, path: &Path) -> Result<CheckedModule, Vec<Diagnostic>> {
-        let module = ModuleLoader::load(path)?;
+        let loaded = ModuleLoader::load_with_sources(path);
+        if !loaded.diagnostics.is_empty() {
+            return Err(loaded.diagnostics);
+        }
+        let module = loaded.module.unwrap_or(Module { items: Vec::new() });
         let checked = TypeChecker::check_module(&module);
         if checked.diagnostics.is_empty() {
             Ok(CheckedModule {
                 module,
                 semantic: checked.semantic,
+                sources: loaded.sources,
             })
         } else {
             Err(checked.diagnostics)
@@ -157,6 +194,39 @@ impl Compiler {
 struct CheckedModule {
     module: Module,
     semantic: SemanticModel,
+    sources: SourceManager,
+}
+
+/// A single checked compilation; numeric source/symbol IDs are session-scoped.
+#[derive(Debug)]
+pub struct CompilationSnapshot {
+    sources: SourceManager,
+    module: Module,
+    semantic: SemanticModel,
+    hir: HirModule,
+    mir: MirModule,
+}
+
+impl CompilationSnapshot {
+    pub fn sources(&self) -> &SourceManager {
+        &self.sources
+    }
+
+    pub fn module(&self) -> &Module {
+        &self.module
+    }
+
+    pub fn semantic(&self) -> &SemanticModel {
+        &self.semantic
+    }
+
+    pub fn hir(&self) -> &HirModule {
+        &self.hir
+    }
+
+    pub fn mir(&self) -> &MirModule {
+        &self.mir
+    }
 }
 
 #[derive(Debug, Default)]
