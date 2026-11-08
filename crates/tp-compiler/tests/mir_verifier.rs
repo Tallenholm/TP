@@ -1,6 +1,6 @@
 use tp_compiler::{
     BlockId, Compiler, Constant, Interpreter, LocalId, MirModule, MirPattern, MirStatement,
-    MirVerificationKind, MirVerifier, Operand, Rvalue, Terminator,
+    MirVerificationKind, MirVerifier, Operand, Rvalue, Terminator, Type,
 };
 
 fn sample() -> MirModule {
@@ -269,5 +269,90 @@ fn direct_interpreter_rejects_malformed_local_ids() {
     let error = interpreter
         .run_main()
         .expect_err("raw interpreter must not execute incorrectly indexed locals");
+    assert_eq!(error.code, "TP-E0600");
+}
+
+#[test]
+fn rejects_duplicate_mir_function_names() {
+    let mut mir = sample();
+    mir.functions.push(mir.functions[0].clone());
+    let errors = MirVerifier::verify(&mir).expect_err("duplicate callable names must fail");
+    assert!(
+        errors.iter().any(|error| matches!(
+            &error.kind,
+            MirVerificationKind::DuplicateFunction { name } if name == "main"
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_integer_mir_branch_condition() {
+    let mut mir = sample();
+    let function = &mut mir.functions[0];
+    let entry = function.entry;
+    function.blocks[entry.0 as usize].terminator = Terminator::Branch {
+        condition: Operand::Constant(Constant::I64(1)),
+        then_block: entry,
+        else_block: entry,
+    };
+    let errors = MirVerifier::verify(&mir).expect_err("branch must have a boolean condition");
+    assert!(
+        errors.iter().any(|error| matches!(
+            &error.kind,
+            MirVerificationKind::InvalidBranchCondition { actual, .. }
+                if *actual == Type::I64
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_mir_return_of_wrong_primitive_type() {
+    let mut mir = sample();
+    let function = &mut mir.functions[0];
+    let entry = function.entry;
+    function.blocks[entry.0 as usize].terminator =
+        Terminator::Return(Some(Operand::Constant(Constant::Bool(true))));
+    let errors = MirVerifier::verify(&mir).expect_err("wrong return type must be rejected");
+    assert!(
+        errors.iter().any(|error| matches!(
+            &error.kind,
+            MirVerificationKind::InvalidReturnType { expected, actual, .. }
+                if *expected == Type::I64 && *actual == Type::Bool
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_unknown_function_reference_in_mir() {
+    let mut mir = sample();
+    let function = &mut mir.functions[0];
+    let entry = function.entry;
+    function.blocks[entry.0 as usize]
+        .statements
+        .push(MirStatement::Assign {
+            target: LocalId(0),
+            value: Rvalue::Function("ghost".to_owned()),
+        });
+    let errors = MirVerifier::verify(&mir).expect_err("unknown MIR callable must be rejected");
+    assert!(
+        errors.iter().any(|error| matches!(
+            &error.kind,
+            MirVerificationKind::UnknownFunctionReference { name } if name == "ghost"
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn public_interpreter_rejects_duplicate_function_mir() {
+    let mut mir = sample();
+    mir.functions.push(mir.functions[0].clone());
+    let mut interpreter = Interpreter::new(&mir);
+    let error = interpreter
+        .run_main()
+        .expect_err("direct execution must reject duplicate callable names");
     assert_eq!(error.code, "TP-E0600");
 }
