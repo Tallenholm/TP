@@ -13,8 +13,8 @@
 
 | ID | Requirement | Status | Evidence / blocker |
 |---|---|---|---|
-| G2-R01 | Freeze lexical grammar and tokenization semantics | VERIFYING | Corpus cases and `docs/M1_LEXICAL_AND_SYNTAX_SEMANTICS.md` added; awaiting CI confirmation. |
-| G2-R02 | Freeze operator precedence and associativity | VERIFYING | Observable precedence/associativity cases added; awaiting CI confirmation. |
+| G2-R01 | Freeze lexical grammar and tokenization semantics | PASS | `docs/M1_LEXICAL_AND_SYNTAX_SEMANTICS.md` plus lexical conformance cases passed pinned/locked CI 42438222995. |
+| G2-R02 | Freeze operator precedence and associativity | PASS | Observable precedence/associativity corpus passed pinned/locked CI 42438222995. |
 | G2-R03 | Freeze literals, integer overflow/traps, and floating-point semantics | FAIL | Existing Gate 1 numeric documentation is input; independent conformance cases still required. |
 | G2-R04 | Freeze equality, strings, and Unicode semantics | FAIL | Active work not yet completed. |
 | G2-R05 | Freeze scopes, shadowing, bindings, and mutability | FAIL | Active work not yet completed. |
@@ -61,12 +61,12 @@ The final run must also execute the complete independent M1 conformance corpus a
 
 ## 5. CI Evidence
 
-Harness foundation passed pinned/locked CI **42437909426** on Rust 1.85.0. Gate 2 feature-freeze CI evidence will be appended as each semantic slice closes.
+Harness foundation passed pinned/locked CI **42437909426** on Rust 1.85.0. Lexical/precedence freeze passed CI **42438222995** after correcting a fixture-encoding mistake that had accidentally encoded a valid escaped backslash instead of the intended invalid escape.
 
 ## 6. Conformance Evidence
 
 **Required location:** `tests/conformance/`  
-**Cases passed:** harness seed 4; feature corpus in progress  
+**Cases passed:** harness seed 4 + lexical/precedence 16; feature corpus in progress  
 **Cases failed:** none retained; any mismatch becomes a semantic decision/finding  
 **Known exclusions:** none accepted unless explicitly justified in this report.
 
