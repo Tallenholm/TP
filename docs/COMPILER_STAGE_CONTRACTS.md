@@ -19,7 +19,7 @@
 | MIR verifier (planned) | CFG/local indexing and use integrity | MIR → verified MIR or typed error | Silently normalize malformed IR or execute it |
 | Interpreter | M1 run-time behavior and defined traps | verified MIR → value/stdout or runtime trap | Read outside verified local/block tables or re-typecheck |
 
-As of 2026-11-08, `Compiler::lower_source`/`lower_path` call `HirVerifier`, and `Compiler::lower_mir_source`/`lower_mir_path` call `MirVerifier`. Both check internal IR before returning it to callers. This does **not** prove every type/definite-assignment invariant, nor does it validate direct external construction of the public interpreter.
+As of 2026-11-08, `Compiler::lower_source`/`lower_path` call `HirVerifier`, and `Compiler::lower_mir_source`/`lower_mir_path` call `MirVerifier`. Both check internal IR before returning it to callers. The public interpreter also runs `MirVerifier` at `run_main` time even when constructed from externally fabricated MIR; invalid modules fail with code `TP-E0600`, as proved by [CI 42504027480](https://github.com/Tallenholm/TP/actions/runs/42504027480). This does **not** prove every type/definite-assignment invariant.
 
 ## Established M1 semantic invariant
 

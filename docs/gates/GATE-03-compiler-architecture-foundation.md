@@ -22,7 +22,7 @@
 | G3-R07 | Typed structured internal and user diagnostics | PENDING | Stable codes and panic-free invalid input tests |
 | G3-R08 | HIR verifier | IN PROGRESS | `HirVerifier` with typed `HirVerificationKind` and `TP-E0601` pipeline diagnostics; 9/9 adversarial HIR cases and M1 frozen suite PASS CI [42503647514](https://github.com/Tallenholm/TP/actions/runs/42503647514). Additional nested semantic and source provenance checks pending. |
 | G3-R09 | MIR verifier and guarded execution | IN PROGRESS | `MirVerifier` and `TP-E0600` integration added. 13/13 dedicated verifier tests PASS on exact-head CI [42499410650](https://github.com/Tallenholm/TP/actions/runs/42499410650); full structural-verifier hardening and architecture review still in progress. |
-| G3-R10 | Negative/adversarial malformed-IR corpus | IN PROGRESS | 13/13 MIR and 9/9 HIR cases PASS on respective exact-head CI [42499410650](https://github.com/Tallenholm/TP/actions/runs/42499410650) and [42503647514](https://github.com/Tallenholm/TP/actions/runs/42503647514). Broader property/graph coverage remains. |
+| G3-R10 | Negative/adversarial malformed-IR corpus | IN PROGRESS | 15/15 MIR (including two public-interpreter boundary tests) and 9/9 HIR cases PASS on [42504027480](https://github.com/Tallenholm/TP/actions/runs/42504027480); prior stage-specific runs [42499410650](https://github.com/Tallenholm/TP/actions/runs/42499410650) and [42503647514](https://github.com/Tallenholm/TP/actions/runs/42503647514). Broader property/graph coverage remains. |
 | G3-R11 | Full regression / conformance / CI / final architecture review | PENDING | Rust 1.85.0 pinned/locked verification, 144/144 M1 cases, final diff audit |
 
 ## 2. Test-Driven Evidence
@@ -42,6 +42,11 @@
 - Test-fixture correction: [CI 42503567969](https://github.com/Tallenholm/TP/actions/runs/42503567969) failed solely because the duplicated-parameter test used an invalid `main(x)` fixture. Updated to a valid `helper(x)` declaration; did not change language semantics.
 - GREEN: [CI 42503647514](https://github.com/Tallenholm/TP/actions/runs/42503647514), commit `6e9be965786135dafa9902b45bf684ea6f0df89c`: Rust 1.85.0 formatting/Clippy/full locked workspace, 9/9 HIR adversarial tests, 13/13 MIR verifier tests, the 144-case frozen M1 corpus, and Hello/Fibonacci smoke checks all PASS.
 
+**G3-T02 public Interpreter boundary RED → GREEN:**
+
+- RED: [CI 42503940577](https://github.com/Tallenholm/TP/actions/runs/42503940577) on `fbac4aade080ecfcf98f719edad7b09eceb58fa6`, formatter/Clippy PASS but both hand-built malformed MIR direct `Interpreter::new(&mir).run_main()` tests failed because execution silently accepted wrong block/local metadata.
+- GREEN: [CI 42504027480](https://github.com/Tallenholm/TP/actions/runs/42504027480) on `d2f465d51fd9ce0d0fd80b9f8c0265f5a4faa997`, all 15 MIR tests PASS; public interpreter `run_main` now runs `MirVerifier` and returns typed `RuntimeError` code `TP-E0600` for structurally invalid external MIR. Full locked workspace, frozen M1 corpus, Rust fmt, strict Clippy and Hello/Fibonacci PASS.
+
 ## 3. Verification Commands
 
 ```bash
@@ -50,7 +55,7 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 ```
 
-These are required for each completed code increment and at exit. Gate 3 work will also run verifier-negative cases, the full 144-case M1 conformance corpus, and Hello/Fibonacci smoke tests. Initial Gate 3 T02 verification PASS on exact head `5ff892d963a0b602e8f88d86ff3b45e132c577b3` via CI 42499191663, including 7/7 verifier tests and full frozen M1 regression. Expanded 13-case MIR suite and 9-case HIR suite both pass, together with the complete frozen M1 regression on exact-head CI 42503647514. Final full Gate 3 exit verification is not yet claimed.
+These are required for each completed code increment and at exit. Gate 3 work will also run verifier-negative cases, the full 144-case M1 conformance corpus, and Hello/Fibonacci smoke tests. Initial Gate 3 T02 verification PASS on exact head `5ff892d963a0b602e8f88d86ff3b45e132c577b3` via CI 42499191663, including 7/7 verifier tests and full frozen M1 regression. Expanded 15-case MIR suite (including raw interpreter safeguards) and 9-case HIR suite both pass, together with the complete frozen M1 regression on exact-head CI 42504027480. Final full Gate 3 exit verification is not yet claimed.
 
 ## 4. CI Evidence
 
@@ -64,11 +69,13 @@ These are required for each completed code increment and at exit. Gate 3 work wi
 | [G3-T03 intended RED 42503096400](https://github.com/Tallenholm/TP/actions/runs/42503096400) | `5ae1026` | RED (expected) | E0432 missing HIR verifier API; formatting passed |
 | [G3-T03 regression 42503348927](https://github.com/Tallenholm/TP/actions/runs/42503348927) | `286d6f4` | FAILED | Frozen enum-generic explicit annotation conformance case exposed HIR type provenance issue |
 | [G3-T03 GREEN 42503647514](https://github.com/Tallenholm/TP/actions/runs/42503647514) | `6e9be96` | PASS | 9/9 HIR + 13/13 MIR, M1 corpus, full Rust fmt/Clippy/workspace/smokes |
+| [G3 direct-interpreter RED 42503940577](https://github.com/Tallenholm/TP/actions/runs/42503940577) | `fbac4aa` | RED (expected) | Raw Interpreter accepted invalid block/local metadata |
+| [G3 direct-interpreter GREEN 42504027480](https://github.com/Tallenholm/TP/actions/runs/42504027480) | `d2f465d` | PASS | 15/15 MIR, 9/9 HIR, frozen corpus, full Rust fmt/Clippy/workspace/smokes |
 
 ## 5. Conformance Evidence
 
-**Gate 3 cases passed:** 13/13 MIR verifier + 9/9 HIR verifier on CI 42503647514.  
-**Gate 3 cases failed:** none on the verified head `6e9be965786135dafa9902b45bf684ea6f0df89c`.  
+**Gate 3 cases passed:** 15/15 MIR (including direct interpreter) + 9/9 HIR on CI 42504027480.  
+**Gate 3 cases failed:** none on the verified head `d2f465d51fd9ce0d0fd80b9f8c0265f5a4faa997`.  
 **Frozen baseline:** M1 Gate 2 144/144 PASS.  
 **Exclusions:** none approved.
 
@@ -103,7 +110,7 @@ Current `SemanticModel` already bridges type checking and HIR. G3-T02 adds a ded
 
 ## 10. Security Review
 
-Malformed internal IR, cross-module identity collisions, source path mismatches and unchecked interpreter assumptions are in scope. Initial MIR verification rejects malformed CFG indices/edges and invalid local references at public `Compiler` lowering boundaries with coded `TP-E0600` diagnostics. HIR verification now guards `Compiler::lower_source`/`lower_path` using scoped binding metadata and coded `TP-E0601` diagnostics. These are compiler-internal failures, not new source-language errors. Direct public `Interpreter::new` of externally fabricated MIR is **not yet a checked construction boundary**; this remains a known hardening item and cannot be presented as fully solved. Dedicated Gate 15 supply-chain hardening remains out of scope.
+Malformed internal IR, cross-module identity collisions, source path mismatches and unchecked interpreter assumptions are in scope. Initial MIR verification rejects malformed CFG indices/edges and invalid local references at public `Compiler` lowering boundaries with coded `TP-E0600` diagnostics. HIR verification now guards `Compiler::lower_source`/`lower_path` using scoped binding metadata and coded `TP-E0601` diagnostics. These are compiler-internal failures, not new source-language errors. Direct public `Interpreter::new` still accepts borrowed MIR by design, but `run_main` now validates it before execution and rejects malformed structural MIR with `TP-E0600`; this guard passed adversarial RED→GREEN tests. Deeper MIR type/definite-assignment and runtime recursion safety are not yet proven. Dedicated Gate 15 supply-chain hardening remains out of scope.
 
 ## 11. Documentation Audit
 
@@ -115,7 +122,7 @@ Affected laws: safety/defined behavior (1), semantic simplicity (2), stable diag
 
 ## 13. Known Limitations
 
-Gate 2's frozen `docs/M1_KNOWN_LIMITATIONS.md` remains authoritative. Initial MIR verification covers structural integrity, not all type/definite-assignment invariants or untrusted direct interpreter construction. Full compiler architecture, stable symbol/module IDs, source/query model, full HIR/MIR type and definite-assignment proofs, and Gate 3 exit reviews remain unfinished; do not claim production quality or Gate 4 safety features.
+Gate 2's frozen `docs/M1_KNOWN_LIMITATIONS.md` remains authoritative. Initial MIR verification covers structural integrity at both compiler and direct interpreter run boundaries, not all type/definite-assignment invariants. Full compiler architecture, stable symbol/module IDs, source/query model, full HIR/MIR type and definite-assignment proofs, and Gate 3 exit reviews remain unfinished; do not claim production quality or Gate 4 safety features.
 
 ## 14. Final Decision
 
