@@ -1,8 +1,8 @@
 use std::{error::Error, fmt};
 
 use crate::{
-    BinaryOp, Constant, MirFunction, MirModule, MirPattern, MirStatement, Operand, Rvalue,
-    Terminator, UnaryOp, Value,
+    BinaryOp, Constant, MirFunction, MirModule, MirPattern, MirStatement, MirVerifier, Operand,
+    Rvalue, Terminator, UnaryOp, Value,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -42,6 +42,18 @@ impl<'a> Interpreter<'a> {
     }
 
     pub fn run_main(&mut self) -> Result<Value, RuntimeError> {
+        // Public Interpreter::new accepts borrowed MIR. Verify at the execution
+        // boundary too, even if the caller bypassed Compiler's verified pipeline.
+        if let Err(errors) = MirVerifier::verify(self.module) {
+            let details = errors
+                .first()
+                .map(|error| format!("function `{}`: {}", error.function, error.kind))
+                .unwrap_or_else(|| "unknown structural failure".to_owned());
+            return Err(RuntimeError {
+                code: "TP-E0600",
+                message: format!("invalid MIR module: {details}"),
+            });
+        }
         self.execute_function("main", Vec::new())
     }
 
