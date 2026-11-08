@@ -1,0 +1,2 @@
+enum Flag { On, Off }
+fn main() { print(On); }

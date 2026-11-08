@@ -359,6 +359,16 @@ fn runtime_fail_requires_runtime_code() {
 }
 
 #[test]
+fn run_compile_fail_requires_diagnostics() {
+    let error = parse_expectation_str("outcome=run_compile_fail\n")
+        .expect_err("run_compile_fail without diagnostics must fail");
+    assert!(
+        error.contains("run_compile_fail requires `diagnostics`"),
+        "{error}"
+    );
+}
+
+#[test]
 fn conformance_case_discovery_is_sorted() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../..")

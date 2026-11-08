@@ -1,0 +1,2 @@
+import shared
+fn right() -> i64 { shared.value() + 2 }
