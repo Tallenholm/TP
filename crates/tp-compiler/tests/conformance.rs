@@ -4,20 +4,25 @@ use std::path::Path;
 fn expectation_rejects_unknown_key() {
     let error = parse_expectation_str("outcome=check_pass\nmystery=yes\n")
         .expect_err("unknown metadata key must fail");
-    assert!(error.contains("unknown expectation key `mystery`"), "{error}");
+    assert!(
+        error.contains("unknown expectation key `mystery`"),
+        "{error}"
+    );
 }
 
 #[test]
 fn expectation_rejects_duplicate_key() {
     let error = parse_expectation_str("outcome=check_pass\noutcome=run\n")
         .expect_err("duplicate metadata key must fail");
-    assert!(error.contains("duplicate expectation key `outcome`"), "{error}");
+    assert!(
+        error.contains("duplicate expectation key `outcome`"),
+        "{error}"
+    );
 }
 
 #[test]
 fn expectation_rejects_invalid_outcome() {
-    let error = parse_expectation_str("outcome=maybe\n")
-        .expect_err("invalid outcome must fail");
+    let error = parse_expectation_str("outcome=maybe\n").expect_err("invalid outcome must fail");
     assert!(error.contains("invalid outcome `maybe`"), "{error}");
 }
 
@@ -59,12 +64,7 @@ fn conformance_case_discovery_is_sorted() {
 
     assert_eq!(
         names,
-        vec![
-            "check-pass",
-            "compile-fail",
-            "run-stdout",
-            "run-value",
-        ]
+        vec!["check-pass", "compile-fail", "run-stdout", "run-value",]
     );
 }
 
