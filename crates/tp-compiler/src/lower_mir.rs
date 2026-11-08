@@ -309,10 +309,7 @@ impl FunctionBuilder {
                 let mut lowered_fields = Vec::with_capacity(fields.len());
                 for (name, value) in fields {
                     let operand = self.lower_expr(value);
-                    lowered_fields.push((
-                        name.clone(),
-                        self.capture_operand(&value.ty, operand),
-                    ));
+                    lowered_fields.push((name.clone(), self.capture_operand(&value.ty, operand)));
                 }
                 self.temp_rvalue(
                     expr.ty.clone(),
