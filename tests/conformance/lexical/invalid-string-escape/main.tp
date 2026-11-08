@@ -1,1 +1,1 @@
-fn main() { "bad\\q"; }
+fn main() { "bad\q"; }
