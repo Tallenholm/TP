@@ -1,6 +1,6 @@
 # M1 Numeric Semantics
 
-**Status:** Gate 2 freeze candidate — independent conformance verification in progress  
+**Status:** Gate 2 frozen M1 semantic surface  
 **Scope:** M1 executable core
 
 ## Numeric types and coercion

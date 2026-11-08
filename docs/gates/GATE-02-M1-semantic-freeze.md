@@ -15,8 +15,8 @@
 |---|---|---|---|
 | G2-R01 | Freeze lexical grammar and tokenization semantics | PASS | `docs/M1_LEXICAL_AND_SYNTAX_SEMANTICS.md` plus lexical conformance cases passed pinned/locked CI 42438222995. |
 | G2-R02 | Freeze operator precedence and associativity | PASS | Observable precedence/associativity corpus passed pinned/locked CI 42438222995. |
-| G2-R03 | Freeze literals, integer overflow/traps, and floating-point semantics | VERIFYING | Numeric conformance corpus and revised `docs/M1_NUMERIC_SEMANTICS.md` added; awaiting full Task 3 CI. |
-| G2-R04 | Freeze equality, strings, and Unicode semantics | VERIFYING | G2-D01 equality decision repaired RED → GREEN; string/Unicode/value corpus and `docs/M1_VALUE_SEMANTICS.md` added; awaiting full Task 3 CI. |
+| G2-R03 | Freeze literals, integer overflow/traps, and floating-point semantics | PASS | Numeric conformance corpus and `docs/M1_NUMERIC_SEMANTICS.md` passed pinned/locked CI 42438618212. |
+| G2-R04 | Freeze equality, strings, and Unicode semantics | PASS | G2-D01 completed RED → GREEN; value/string/Unicode corpus and `docs/M1_VALUE_SEMANTICS.md` passed pinned/locked CI 42438618212. |
 | G2-R05 | Freeze scopes, shadowing, bindings, and mutability | FAIL | Active work not yet completed. |
 | G2-R06 | Freeze function calls, recursion, returns, divergence, and control-flow semantics | FAIL | Active work not yet completed. |
 | G2-R07 | Freeze `if` and `while` semantics | FAIL | Active work not yet completed. |
@@ -62,12 +62,12 @@ The final run must also execute the complete independent M1 conformance corpus a
 
 ## 5. CI Evidence
 
-Harness foundation passed pinned/locked CI **42437909426** on Rust 1.85.0. Lexical/precedence freeze passed CI **42438222995** after correcting a fixture-encoding mistake that had accidentally encoded a valid escaped backslash instead of the intended invalid escape. Equality decision G2-D01 completed RED **42438388839** → GREEN **42438445377**.
+Harness foundation passed pinned/locked CI **42437909426** on Rust 1.85.0. Lexical/precedence freeze passed CI **42438222995** after correcting a fixture-encoding mistake that had accidentally encoded a valid escaped backslash instead of the intended invalid escape. Equality decision G2-D01 completed RED **42438388839** → GREEN **42438445377**. Full value/numeric/string/Unicode freeze passed CI **42438618212**.
 
 ## 6. Conformance Evidence
 
 **Required location:** `tests/conformance/`  
-**Cases passed:** harness seed 4 + lexical/precedence 16; feature corpus in progress  
+**Cases passed:** 52 / 52 current cases; feature corpus still expanding  
 **Cases failed:** none retained; any mismatch becomes a semantic decision/finding  
 **Known exclusions:** none accepted unless explicitly justified in this report.
 
