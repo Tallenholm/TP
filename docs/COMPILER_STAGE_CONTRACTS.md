@@ -19,11 +19,23 @@
 | MIR verifier (planned) | CFG/local indexing and use integrity | MIR → verified MIR or typed error | Silently normalize malformed IR or execute it |
 | Interpreter | M1 run-time behavior and defined traps | verified MIR → value/stdout or runtime trap | Read outside verified local/block tables or re-typecheck |
 
-Until the verifier interfaces are integrated, compiler output is **not** claimed to be guarded by a completed Gate 3 verifier.
+As of 2026-11-08, `Compiler::lower_source`/`lower_path` call `HirVerifier`, and `Compiler::lower_mir_source`/`lower_mir_path` call `MirVerifier`. Both check internal IR before returning it to callers. This does **not** prove every type/definite-assignment invariant, nor does it validate direct external construction of the public interpreter.
 
 ## Established M1 semantic invariant
 
 The Gate 2 conformance oracle (144 cases) controls all observable behavior. In particular, equalities/print/function-symbol restrictions, exact left-to-right evaluation and value capture, short-circuit logic, module canonicalization, entrypoint diagnostics, checked integer traps, and runtime output must not change.
+
+## HIR scoped binding and checked-type contract — G3-T03
+
+- A function's parameter symbols and all let/pattern binding SymbolIds must be unique within that function (shadowing still receives a fresh SymbolId).
+- Lexical scopes are tracked across nested blocks and distinct match arms. No local use/assignment may refer to a not-yet-declared or out-of-scope SymbolId.
+- HIR literal types must match their primitive kind; local use type metadata must match the resolved binding. `if`/`while` conditions require `Bool` or `Never` (unreachable conditions are allowed by frozen M1).
+- Assignment to an immutable symbol is invalid IR. A source span with `start > end` is invalid IR; there is not yet a complete check against the source's byte length.
+- **Critical provenance rule:** `HirStmt::Let.ty` must originate from the type checker's `SemanticModel`, **not** `value.ty`. An explicit `let x: Maybe<i64> = None;` is valid even though the uncontextualized generic `None` initializer carries a less-specific type. MIR local metadata must use the authoritative HIR `ty`.
+- Scope and primitive-shape verification is not a second source type checker; richer HIR type rules remain Gate 3 work.
+- Typed `HirVerificationError/HirVerificationKind` map to external diagnostic `TP-E0601` on the public Compiler API when invalid lowered HIR is encountered.
+
+**Evidence:** intended RED CI [42503096400](https://github.com/Tallenholm/TP/actions/runs/42503096400), annotation-provenance regression exposed by [42503348927](https://github.com/Tallenholm/TP/actions/runs/42503348927), and GREEN CI [42503647514](https://github.com/Tallenholm/TP/actions/runs/42503647514): 9/9 HIR tests and frozen 144-case M1 corpus.
 
 ## MIR-specific structural invariants — initial G3-T02 contract
 
