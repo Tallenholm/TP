@@ -103,3 +103,42 @@ fn invalid_query_returns_diagnostics_instead_of_partial_ir() {
         "invalid source must not expose unchecked IR"
     );
 }
+
+#[test]
+fn diamond_graph_has_one_canonical_shared_module_and_two_incoming_edges() {
+    let query = Compiler::new()
+        .analyze_path(&fixture("diamond_main.tp"))
+        .expect("diamond graph should load");
+    let graph = query.module_graph().expect("file-backed query has module graph");
+    assert_eq!(graph.nodes().len(), 4);
+    let shared = graph
+        .nodes()
+        .iter()
+        .find(|node| node.id.path().ends_with("diamond_shared.tp"))
+        .expect("shared module");
+    assert_eq!(
+        graph.edges().iter().filter(|edge| edge.to == shared.id).count(),
+        2
+    );
+    let source = query.sources().get(shared.source).expect("canonical source");
+    assert_eq!(std::path::Path::new(source.name()), shared.id.path());
+}
+
+#[test]
+fn two_import_aliases_share_the_same_stable_module_identity() {
+    let query = Compiler::new()
+        .analyze_path(&fixture("modules_two_aliases_main.tp"))
+        .expect("valid two-alias module graph");
+    let graph = query.module_graph().expect("file-backed graph");
+    assert_eq!(graph.nodes().len(), 2);
+    assert_eq!(graph.edges().len(), 2);
+    assert_eq!(graph.edges()[0].to, graph.edges()[1].to);
+    assert_ne!(graph.edges()[0].alias, graph.edges()[1].alias);
+
+    let again = Compiler::new()
+        .analyze_path(&fixture("modules_two_aliases_main.tp"))
+        .expect("second query");
+    let second = again.module_graph().expect("file-backed graph");
+    assert_eq!(graph.nodes()[0].id, second.nodes()[0].id);
+    assert_eq!(graph.nodes()[1].id, second.nodes()[1].id);
+}
