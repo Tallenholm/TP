@@ -286,3 +286,41 @@ fn hir_verification_diagnostics(errors: Vec<crate::HirVerificationError>) -> Vec
         })
         .collect()
 }
+
+
+#[cfg(test)]
+mod verifier_diagnostic_tests {
+    use super::{hir_verification_diagnostics, mir_verification_diagnostics};
+    use crate::{
+        BlockId, HirVerificationError, HirVerificationKind, MirVerificationError,
+        MirVerificationKind, SourceFile, Span,
+    };
+
+    #[test]
+    fn hir_diagnostic_keeps_verified_source_span() {
+        let source = SourceFile::new("main.tp", "fn main() {}");
+        let span = Span::new(source.id(), 0, 2);
+        let diagnostics = hir_verification_diagnostics(vec![HirVerificationError {
+            function: "main".to_owned(),
+            span,
+            kind: HirVerificationKind::InvalidSpan { start: 2, end: 1 },
+        }]);
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(diagnostics[0].code, "TP-E0601");
+        assert_eq!(diagnostics[0].primary, Some(span));
+    }
+
+    #[test]
+    fn mir_diagnostic_keeps_function_source_span() {
+        let source = SourceFile::new("main.tp", "fn main() {}");
+        let span = Span::new(source.id(), 0, 2);
+        let diagnostics = mir_verification_diagnostics(vec![MirVerificationError {
+            function: "main".to_owned(),
+            span,
+            kind: MirVerificationKind::InvalidEntry { entry: BlockId(999) },
+        }]);
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(diagnostics[0].code, "TP-E0600");
+        assert_eq!(diagnostics[0].primary, Some(span));
+    }
+}
