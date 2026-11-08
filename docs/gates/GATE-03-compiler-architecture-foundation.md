@@ -21,8 +21,8 @@
 | G3-R06 | Compiler query API contracts | PENDING | Query determinism and mutation tests |
 | G3-R07 | Typed structured internal and user diagnostics | PENDING | Stable codes and panic-free invalid input tests |
 | G3-R08 | HIR verifier | PENDING | RED → GREEN malformed HIR tests |
-| G3-R09 | MIR verifier and guarded execution | IN PROGRESS | `MirVerifier` and `TP-E0600` integration added. Initial 7 tests PASS on CI 42499191663; expanded boundary tests pending confirmation and further architecture review. |
-| G3-R10 | Negative/adversarial malformed-IR corpus | IN PROGRESS | 7 initial verifier tests PASS on CI 42499191663; expanded negative tests added for empty CFG, duplicated params, branch, match, return and invalid assignment target, pending exact-head CI. |
+| G3-R09 | MIR verifier and guarded execution | IN PROGRESS | `MirVerifier` and `TP-E0600` integration added. 13/13 dedicated verifier tests PASS on exact-head CI [42499410650](https://github.com/Tallenholm/TP/actions/runs/42499410650); full structural-verifier hardening and architecture review still in progress. |
+| G3-R10 | Negative/adversarial malformed-IR corpus | IN PROGRESS | 13/13 verifier tests PASS on exact-head CI [42499410650](https://github.com/Tallenholm/TP/actions/runs/42499410650), including empty CFG, duplicated parameters, branch, match, return and invalid assignment-target boundaries. Broader malformed-IR/property coverage remains to be developed. |
 | G3-R11 | Full regression / conformance / CI / final architecture review | PENDING | Rust 1.85.0 pinned/locked verification, 144/144 M1 cases, final diff audit |
 
 ## 2. Test-Driven Evidence
@@ -32,7 +32,7 @@
 - RED: [CI 42498929751](https://github.com/Tallenholm/TP/actions/runs/42498929751), commit `c5c1d9c90c2e72aa4b51419d6ab0221e6817876d`, formatting PASS, Rust compile/lint failed with E0432 unresolved imports `tp_compiler::MirVerificationKind` and `tp_compiler::MirVerifier` as expected.
 - GREEN: [CI 42499191663](https://github.com/Tallenholm/TP/actions/runs/42499191663), commit `5ff892d963a0b602e8f88d86ff3b45e132c577b3`, formatting PASS, Clippy with warnings denied PASS, full locked workspace tests PASS, all seven MIR verifier tests PASS, independent conformance harness and Hello/Fibonacci smoke PASS.
 - A prior intermediate CI run 42498832214 failed formatting before it could demonstrate the missing API; this formatting-only failure is **not** treated as TDD RED evidence. A later implementation commit needed only rustfmt adjustment (CI 42499120226), resolved before GREEN.
-- Further malformed MIR boundary cases have been added for additional regression coverage; their CI evidence is still required before marking this task complete.
+- Additional malformed MIR boundary tests passed **13/13** on [CI 42499410650](https://github.com/Tallenholm/TP/actions/runs/42499410650), exact head `b71a0c76fa2918912a8cfcd1360a0b34b896422c`, with formatter, Clippy, workspace tests, M1 conformance, Hello/Fibonacci all green. No new compiler semantic changes were required for these boundary tests. Gate 3 overall remains ACTIVE, not PASSED.
 
 ## 3. Verification Commands
 
@@ -42,7 +42,7 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 ```
 
-These are required for each completed code increment and at exit. Gate 3 work will also run verifier-negative cases, the full 144-case M1 conformance corpus, and Hello/Fibonacci smoke tests. Initial Gate 3 T02 verification PASS on exact head `5ff892d963a0b602e8f88d86ff3b45e132c577b3` via CI 42499191663, including 7/7 verifier tests and full frozen M1 regression. Expanded tests and final Gate 3 exit verification are not yet claimed.
+These are required for each completed code increment and at exit. Gate 3 work will also run verifier-negative cases, the full 144-case M1 conformance corpus, and Hello/Fibonacci smoke tests. Initial Gate 3 T02 verification PASS on exact head `5ff892d963a0b602e8f88d86ff3b45e132c577b3` via CI 42499191663, including 7/7 verifier tests and full frozen M1 regression. Expanded 13-case suite and complete frozen M1 regression PASS on exact-head CI 42499410650. Final full Gate 3 exit verification is not yet claimed.
 
 ## 4. CI Evidence
 
@@ -52,11 +52,12 @@ These are required for each completed code increment and at exit. Gate 3 work wi
 | [Gate Policy 42498347731](https://github.com/Tallenholm/TP/actions/runs/42498347731) | `adb3c692` | PASS | Authoritative Gate 2 closure, not Gate 3 evidence |
 | [G3-T02 RED 42498929751](https://github.com/Tallenholm/TP/actions/runs/42498929751) | `c5c1d9c` | RED (expected) | Missing verifier API, E0432; formatting passed |
 | [G3-T02 GREEN 42499191663](https://github.com/Tallenholm/TP/actions/runs/42499191663) | `5ff892d` | PASS | 7/7 verifier tests, M1 conformance, Rust fmt/Clippy/workspace/smokes |
+| [G3-T02 expanded GREEN 42499410650](https://github.com/Tallenholm/TP/actions/runs/42499410650) | `b71a0c7` | PASS | 13/13 verifier tests, M1 conformance, Rust fmt/Clippy/workspace/Hello/Fibonacci |
 
 ## 5. Conformance Evidence
 
-**Gate 3 cases passed:** initial 7/7 MIR verifier cases on CI 42499191663.  
-**Gate 3 cases failed:** none on that verified head; expanded tests pending.  
+**Gate 3 cases passed:** 13/13 MIR verifier cases on CI 42499410650.  
+**Gate 3 cases failed:** none on the verified head `b71a0c76fa2918912a8cfcd1360a0b34b896422c`.  
 **Frozen baseline:** M1 Gate 2 144/144 PASS.  
 **Exclusions:** none approved.
 
