@@ -20,8 +20,8 @@
 | G2-R05 | Freeze scopes, shadowing, bindings, and mutability | PASS | Scope/binding/mutability corpus and `docs/M1_CONTROL_FLOW_SEMANTICS.md` passed pinned/locked CI 42438971732. |
 | G2-R06 | Freeze function calls, recursion, returns, divergence, and control-flow semantics | PASS | Function/return/recursion/evaluation-order/short-circuit corpus passed CI 42438971732 after G2-D02/G2-D03 RED → GREEN repairs. |
 | G2-R07 | Freeze `if` and `while` semantics | PASS | `if`/`while` corpus passed CI 42438971732; literal `while true` is frozen as definitely diverging. |
-| G2-R08 | Freeze structs, enums, generics, and optional sugar semantics | VERIFYING | Nominal/generic data conformance corpus and `docs/M1_DATA_AND_PATTERN_SEMANTICS.md` added; awaiting Task 5 CI. |
-| G2-R09 | Freeze pattern matching and exhaustiveness semantics | VERIFYING | Pattern/exhaustiveness corpus and semantic document added; awaiting Task 5 CI. |
+| G2-R08 | Freeze structs, enums, generics, and optional sugar semantics | PASS | Nominal/generic data corpus and `docs/M1_DATA_AND_PATTERN_SEMANTICS.md` passed pinned/locked CI 42439179273. |
+| G2-R09 | Freeze pattern matching and exhaustiveness semantics | PASS | Pattern/exhaustiveness corpus and `docs/M1_DATA_AND_PATTERN_SEMANTICS.md` passed pinned/locked CI 42439179273. |
 | G2-R10 | Freeze module/import/alias/canonical-identity semantics | FAIL | `docs/M1_MODULE_SEMANTICS.md` is input; independent conformance cases still required. |
 | G2-R11 | Freeze executable entry point and runtime trap model | FAIL | Active work not yet completed. |
 | G2-R12 | Create implementation-independent `tests/conformance/` corpus organized by language feature | FAIL | Harness foundation exists; full feature corpus is still being built. |
@@ -66,12 +66,12 @@ The final run must also execute the complete independent M1 conformance corpus a
 
 ## 5. CI Evidence
 
-Harness foundation passed pinned/locked CI **42437909426** on Rust 1.85.0. Lexical/precedence freeze passed CI **42438222995** after correcting a fixture-encoding mistake that had accidentally encoded a valid escaped backslash instead of the intended invalid escape. Equality decision G2-D01 completed RED **42438388839** → GREEN **42438445377**. Full value/numeric/string/Unicode freeze passed CI **42438618212**. Task 4 evaluation/divergence repairs completed RED **42438765200** / **42438920554** → GREEN **42438971732**.
+Harness foundation passed pinned/locked CI **42437909426** on Rust 1.85.0. Lexical/precedence freeze passed CI **42438222995** after correcting a fixture-encoding mistake that had accidentally encoded a valid escaped backslash instead of the intended invalid escape. Equality decision G2-D01 completed RED **42438388839** → GREEN **42438445377**. Full value/numeric/string/Unicode freeze passed CI **42438618212**. Task 4 evaluation/divergence repairs completed RED **42438765200** / **42438920554** → GREEN **42438971732**. Data/generic/pattern freeze passed CI **42439179273**.
 
 ## 6. Conformance Evidence
 
 **Required location:** `tests/conformance/`  
-**Cases passed:** 83 / 83 current cases; feature corpus still expanding
+**Cases passed:** 115 / 115 current cases; final module/runtime slice still pending
 **Cases failed:** none retained; any mismatch becomes a semantic decision/finding  
 **Known exclusions:** none accepted unless explicitly justified in this report.
 
