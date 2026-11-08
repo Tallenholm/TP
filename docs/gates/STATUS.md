@@ -58,10 +58,11 @@ If a task appears to belong to a locked gate, stop and update the controlling pl
 
 All known Critical/Major findings in the Gate 1 adversarial ledger are currently **RESOLVED** with retained evidence. Final review Minors are resolved or explicitly documented as non-blocking M1 limitations.
 
-Gate 1 remains ACTIVE because the proof/closure work is not yet complete:
+Gate 1 remains VERIFYING because formal closure is not yet complete:
 
-1. obtain explicit owner authorization before Gate 1 may become PASSED / Gate 2 ACTIVE.
+1. receive fresh pinned/locked CI on the latest evidence-only documentation head;
+2. obtain explicit owner authorization before Gate 1 may become PASSED / Gate 2 ACTIVE.
 
-Final verification evidence: exact-head push CI 42411310293 and PR CI 42411314256 both passed the pinned Rust 1.85.0 / locked dependency pipeline.
+Latest pre-cleanup verification evidence: CI 42411408413 and 42411403194 both passed the pinned Rust 1.85.0 / locked dependency pipeline. A fresh run on the latest documentation-only head is required before formal closure.
 
 Gate 2 remains LOCKED until Gate 1 is formally PASS and the owner explicitly authorizes Gate 2.
