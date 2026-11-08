@@ -973,8 +973,11 @@ impl TypeChecker {
                     },
                 );
                 let mut diverges = false;
+                let mut argument_types = Vec::with_capacity(args.len());
                 for arg in args {
-                    diverges |= self.check_expr(arg).is_never();
+                    let ty = self.check_expr(arg);
+                    diverges |= ty.is_never();
+                    argument_types.push(ty);
                 }
                 if args.len() != 1 {
                     self.diagnostics.push(
@@ -984,6 +987,16 @@ impl TypeChecker {
                         )
                         .with_primary(span),
                     );
+                } else if let Some(ty) = argument_types.first() {
+                    if !ty.is_unknown() && !ty.is_never() && !is_m1_print_type(ty) {
+                        self.diagnostics.push(
+                            Diagnostic::error(
+                                "TP-E0300",
+                                format!("`print` does not support `{ty}` values in M1"),
+                            )
+                            .with_primary(args[0].span),
+                        );
+                    }
                 }
                 return if diverges { Type::Never } else { Type::Unit };
             }
@@ -1502,6 +1515,13 @@ fn patterns_equivalent(left: &Pattern, right: &Pattern) -> bool {
 }
 
 fn is_m1_equality_type(ty: &Type) -> bool {
+    matches!(
+        ty,
+        Type::Unit | Type::Bool | Type::I64 | Type::F64 | Type::String
+    )
+}
+
+fn is_m1_print_type(ty: &Type) -> bool {
     matches!(
         ty,
         Type::Unit | Type::Bool | Type::I64 | Type::F64 | Type::String
