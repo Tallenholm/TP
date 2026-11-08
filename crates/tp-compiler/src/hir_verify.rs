@@ -186,14 +186,17 @@ impl FunctionVerifier {
                 HirStmt::Let {
                     symbol,
                     mutable,
+                    ty,
                     value,
                     span,
                     ..
                 } => {
                     self.check_span(*span);
                     // The initializer runs before its binding becomes visible.
+                    // Explicit annotations can be more precise than generic
+                    // constructors (for instance: Maybe<i64> initialized by None).
                     self.verify_expr(value);
-                    self.declare(*symbol, value.ty.clone(), *mutable, *span);
+                    self.declare(*symbol, ty.clone(), *mutable, *span);
                 }
                 HirStmt::Return { value, span } => {
                     self.check_span(*span);

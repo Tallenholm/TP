@@ -158,11 +158,12 @@ impl FunctionBuilder {
                 symbol,
                 name,
                 mutable,
+                ty,
                 value,
                 ..
             } => {
                 let value_operand = self.lower_expr(value);
-                let local = self.new_named_local(Some(name.clone()), value.ty.clone(), *mutable);
+                let local = self.new_named_local(Some(name.clone()), ty.clone(), *mutable);
                 self.symbol_locals.insert(*symbol, local);
                 self.assign_rvalue(local, Rvalue::Use(value_operand));
             }
