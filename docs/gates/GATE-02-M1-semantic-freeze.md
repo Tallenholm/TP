@@ -15,8 +15,8 @@
 |---|---|---|---|
 | G2-R01 | Freeze lexical grammar and tokenization semantics | PASS | `docs/M1_LEXICAL_AND_SYNTAX_SEMANTICS.md` plus lexical conformance cases passed pinned/locked CI 42438222995. |
 | G2-R02 | Freeze operator precedence and associativity | PASS | Observable precedence/associativity corpus passed pinned/locked CI 42438222995. |
-| G2-R03 | Freeze literals, integer overflow/traps, and floating-point semantics | FAIL | Existing Gate 1 numeric documentation is input; independent conformance cases still required. |
-| G2-R04 | Freeze equality, strings, and Unicode semantics | FAIL | Active work not yet completed. |
+| G2-R03 | Freeze literals, integer overflow/traps, and floating-point semantics | VERIFYING | Numeric conformance corpus and revised `docs/M1_NUMERIC_SEMANTICS.md` added; awaiting full Task 3 CI. |
+| G2-R04 | Freeze equality, strings, and Unicode semantics | VERIFYING | G2-D01 equality decision repaired RED → GREEN; string/Unicode/value corpus and `docs/M1_VALUE_SEMANTICS.md` added; awaiting full Task 3 CI. |
 | G2-R05 | Freeze scopes, shadowing, bindings, and mutability | FAIL | Active work not yet completed. |
 | G2-R06 | Freeze function calls, recursion, returns, divergence, and control-flow semantics | FAIL | Active work not yet completed. |
 | G2-R07 | Freeze `if` and `while` semantics | FAIL | Active work not yet completed. |
@@ -37,7 +37,7 @@ Every ambiguity discovered during Gate 2 must be recorded here until explicitly 
 
 | ID | Severity | Surface | Question / ambiguity | Decision | Evidence | Status |
 |---|---|---|---|---|---|---|
-| G2-D01 | Major | Equality | Should M1 freeze the interpreter's broad Rust-derived structural/function equality for all compatible values? | **No.** M1 equality is defined only for `Unit`, `Bool`, matching numeric primitives, and `String`. Nominal struct/enum values and function values are not equality-comparable in M1; richer equality is deferred to a deliberate later design. | Gate 2 equality conformance RED pending. | ACTIVE |
+| G2-D01 | Major | Equality | Should M1 freeze the interpreter's broad Rust-derived structural/function equality for all compatible values? | **No.** M1 equality is defined only for `Unit`, `Bool`, matching numeric primitives, and `String`. Nominal struct/enum values and function values are not equality-comparable in M1; richer equality is deferred to a deliberate later design. | RED CI 42438388839 accepted enum equality with no diagnostics; GREEN CI 42438445377 after checker restriction. | RESOLVED |
 
 ## 3. Test-Driven Evidence
 
@@ -46,6 +46,7 @@ For any behavior changed during Gate 2, retain RED → GREEN evidence. Pure free
 | ID | Test / conformance case | RED evidence | GREEN evidence | Commit |
 |---|---|---|---|---|
 | G2-T01 | Conformance harness parser/discovery + seed cases | CI 42437796541: compile failed because `parse_expectation_str`, `discover_cases`, and `run_case` did not exist | CI 42437909426: pinned/locked full workflow PASS | `2373079344e8804f0178ca83bdd3218d27d13d3e` + formatting `711b2b7deef1182f3588832ac3e23ffb6601e6ec` |
+| G2-T02 | Restrict M1 equality to explicit comparable primitives | CI 42438388839: enum equality case expected TP-E0300 but received no diagnostics | CI 42438445377: primitive equality passes and struct/enum/function equality rejects | `195901f8722621e2bfa175c9b06ae16157bdd2dd` |
 
 ## 4. Verification Commands
 
@@ -61,7 +62,7 @@ The final run must also execute the complete independent M1 conformance corpus a
 
 ## 5. CI Evidence
 
-Harness foundation passed pinned/locked CI **42437909426** on Rust 1.85.0. Lexical/precedence freeze passed CI **42438222995** after correcting a fixture-encoding mistake that had accidentally encoded a valid escaped backslash instead of the intended invalid escape.
+Harness foundation passed pinned/locked CI **42437909426** on Rust 1.85.0. Lexical/precedence freeze passed CI **42438222995** after correcting a fixture-encoding mistake that had accidentally encoded a valid escaped backslash instead of the intended invalid escape. Equality decision G2-D01 completed RED **42438388839** → GREEN **42438445377**.
 
 ## 6. Conformance Evidence
 

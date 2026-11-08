@@ -1,60 +1,84 @@
 # M1 Numeric Semantics
 
-**Status:** Gate 1 stabilized behavior; subject to Gate 2 semantic freeze  
-**Scope:** M1 executable core only
+**Status:** Gate 2 freeze candidate — independent conformance verification in progress  
+**Scope:** M1 executable core
 
-## No implicit numeric coercion
+## Numeric types and coercion
 
 M1 has two numeric primitive types:
 
 - `i64`
 - `f64`
 
-Binary arithmetic/comparison requires matching numeric operand types. TP does not implicitly widen `i64` to `f64` or narrow `f64` to `i64`.
+Arithmetic and ordered comparison require matching numeric operand types. M1 performs no implicit `i64` ↔ `f64` conversion.
 
-## `i64`
+Equality also requires matching types.
 
-Integer literals must fit the signed 64-bit range. The exact minimum value `-9223372036854775808` is representable.
+## `i64` literals
 
-Runtime integer arithmetic is checked:
+Integer source literals are decimal ASCII digits with optional unary negation.
 
-- addition, subtraction, multiplication, division, remainder, and unary negation trap on signed overflow;
-- division by zero traps;
-- remainder by zero traps.
+The representable range is exactly signed 64-bit:
 
-These runtime failures use diagnostic family `TP-E0500`.
+- minimum: `-9223372036854775808`;
+- maximum: `9223372036854775807`.
 
-## `f64`
+A source integer outside that range is a compile-time `TP-E0100` error. The exact minimum value is recognized as a valid negative literal even though its positive magnitude is one greater than `i64::MAX`.
 
-Source float literals must parse to a **finite** IEEE-754 binary64 value. A decimal literal that parses to Infinity or is otherwise non-finite is rejected at compile time.
+## Checked integer execution
 
-Once execution begins, ordinary floating-point arithmetic follows host Rust/IEEE-754 binary64 behavior:
+M1 integer execution is checked.
+
+The following trap with `TP-E0500` rather than wrapping:
+
+- addition overflow;
+- subtraction overflow;
+- multiplication overflow;
+- division overflow such as `i64::MIN / -1`;
+- remainder overflow where the host checked operation cannot represent the result;
+- unary negation overflow, including negating `i64::MIN`.
+
+Division by zero and remainder by zero also trap with `TP-E0500`.
+
+No build mode is permitted to silently switch M1 integer arithmetic from checked to wrapping semantics.
+
+## `f64` literals
+
+Float source literals use decimal ASCII digits with a decimal point and at least one digit following the point.
+
+A source float must parse to a finite IEEE-754 binary64 value. A literal that parses directly to Infinity or NaN is rejected at compile time with `TP-E0100`.
+
+M1 does not currently provide exponent notation or source spellings for Infinity/NaN.
+
+## `f64` execution
+
+Once execution begins, ordinary `f64` arithmetic follows IEEE-754 binary64 behavior for finite operands:
 
 - addition, subtraction, multiplication, nonzero division, and nonzero remainder may produce finite values, Infinity, or NaN;
-- comparisons use IEEE behavior;
-- NaN is not equal to itself;
-- Infinity/NaN produced by arithmetic are values, not automatic traps.
+- ordered comparisons follow IEEE behavior;
+- NaN is unequal to itself;
+- `+0.0 == -0.0`.
 
-TP M1 deliberately adds one runtime rule beyond ordinary IEEE division/remainder behavior:
+M1 deliberately traps division or remainder by either `+0.0` or `-0.0` with `TP-E0500`, rather than producing ordinary IEEE Infinity/NaN for those two operations.
 
-- division by `+0.0` or `-0.0` traps;
-- remainder by `+0.0` or `-0.0` traps.
+## Equality
 
-This is an M1 semantic choice, not a performance claim. Gate 2 may freeze or deliberately revise it only through the gated semantic process.
+Numeric equality is defined only between matching numeric types:
+
+```tp
+1 == 1       // valid
+1.0 == 1.0   // valid
+1 == 1.0     // TP-E0300
+```
+
+There is no implicit widening for equality.
 
 ## Optional numeric types
 
-The parser supports `T?` optional-type sugar. In M1 it is only valid when the program declares a nominal arity-1 `Option<T>` type. The compiler does not silently invent `Option`.
+`T?` is syntax sugar for the program's declared nominal `Option<T>`. It is valid only when an arity-1 type named `Option` is declared.
 
-Example:
+The compiler does not synthesize a hidden built-in `Option`.
 
-```tp
-enum Option<T> {
-    Some(T),
-    None
-}
+## Conformance evidence
 
-fn maybe_number(value: i64?) {
-    // `i64?` is the declared `Option<i64>` nominal type.
-}
-```
+Gate 2 cases under `tests/conformance/literals-numerics/` freeze these rules through compile/runtime behavior.
