@@ -203,10 +203,9 @@ fn rejects_span_referencing_a_different_source_manager() {
     let errors = HirVerifier::verify_with_sources(&hir, query.sources())
         .expect_err("foreign SourceId must not be accepted");
     assert!(
-        errors.iter().any(|error| matches!(
-            error.kind,
-            HirVerificationKind::UnknownSource { .. }
-        )),
+        errors
+            .iter()
+            .any(|error| matches!(error.kind, HirVerificationKind::UnknownSource { .. })),
         "{errors:#?}"
     );
 }
