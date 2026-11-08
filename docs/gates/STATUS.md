@@ -8,7 +8,7 @@ Last updated: 2026-11-07
 |---|---|---|---|
 | 0 | Governance, Repository Control, and IP | PASSED | Governance/IP/repository policy complete. Owner-managed `main` without mandatory server-side branch protection is explicitly accepted in ADR-0002. |
 | 1 | M1 Adversarial Stabilization | PASSED | G1-R01 through G1-R14 passed with retained RED → GREEN evidence, final whole-branch review, pinned/locked CI, and explicit owner authorization on 2026-11-07. |
-| 2 | M1 Semantic Freeze | ACTIVE | Gate 1 passed and the owner explicitly authorized Gate 2. Freeze/document all M1 semantics and build the implementation-independent conformance corpus before M1 may merge. |
+| 2 | M1 Semantic Freeze | VERIFYING | 144-case semantic corpus is green, all five Gate 2 semantic decisions are resolved, and documentation/final semantic review are complete. Awaiting fresh exact-head CI and explicit owner authorization before PASS / Gate 3. |
 | 3 | Compiler Architecture Foundation | LOCKED | Depends on Gate 2 PASSED. |
 | 4 | Ownership and Memory Model | LOCKED | Depends on Gate 3 PASSED. |
 | 5 | Unsafe Boundary Model | LOCKED | Depends on Gate 4 PASSED. |
@@ -30,7 +30,7 @@ Last updated: 2026-11-07
 
 ## Current allowed work
 
-Gate 0 and Gate 1 are PASSED. Gate 2 — M1 Semantic Freeze — is ACTIVE. Only Gate 2 semantic-freeze, conformance, specification, documentation, and directly required repair work is authorized. Gate 3 and later gates remain LOCKED.
+Gate 0 and Gate 1 are PASSED. Gate 2 — M1 Semantic Freeze — is VERIFYING. Only Gate 2 verification/evidence/documentation closure work is authorized. Gate 3 and later gates remain LOCKED.
 
 The repository intentionally remains public under `docs/decisions/ADR-0001-public-repository-for-ci.md` so TP can make aggressive use of public-repository GitHub-hosted CI while retaining proprietary licensing. Under `docs/decisions/ADR-0002-owner-managed-main.md`, server-side branch protection is optional defense in depth and is not a prerequisite for continuing.
 
@@ -55,8 +55,13 @@ Examples of prohibited work right now:
 
 If Gate 2 evidence exposes a Gate 1 correctness regression, reopen Gate 1 and automatically lock Gate 2 until the regression is repaired and re-verified.
 
-## Active Gate 2 closure work
+## Remaining Gate 2 closure work
 
-Gate 2 must freeze and document the complete M1 semantic surface listed in the master plan and achieve 100% pass on an implementation-independent conformance corpus under `tests/conformance/`.
+The complete planned M1 semantic surface is frozen and 144/144 implementation-independent conformance cases are green on the pre-closure head. Final semantic/diff review and documentation audit are complete.
+
+Remaining:
+
+1. receive fresh pinned Rust 1.85.0 / locked-dependency CI on the latest documentation-closure head;
+2. obtain explicit owner authorization before Gate 2 may become PASSED / Gate 3 ACTIVE.
 
 M1 remains draft/unmerged until Gate 2 PASSES. Gate 3 remains LOCKED until Gate 2 passes and the owner explicitly authorizes Gate 3.

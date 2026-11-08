@@ -114,13 +114,14 @@ Cases should be minimal and normally prove one semantic statement.
 
 Required key:
 
-- `outcome=check_pass|compile_fail|run|runtime_fail`
+- `outcome=check_pass|compile_fail|run_compile_fail|run|runtime_fail`
 
 Conditional keys:
 
 - `diagnostics=TP-E0001,TP-E0100` — exact ordered diagnostic codes when diagnostics are part of the frozen contract;
 - `value=unit|bool:true|i64:42|f64:1.5|string:hello` — required for successful `run` cases unless the case explicitly freezes only stdout;
 - `runtime_code=TP-E0500` — required for `runtime_fail`;
+- `run_compile_fail` uses the executable pipeline and requires `diagnostics`, allowing entry-point compile failures to be frozen without changing `check` semantics;
 - `runtime_message=<stable substring>` — only when message wording itself is intentionally frozen.
 
 `stdout.txt`, when present, is compared byte-for-byte to interpreter output joined with newline separators exactly as exposed by the public run report.

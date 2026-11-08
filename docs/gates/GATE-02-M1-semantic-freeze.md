@@ -1,13 +1,13 @@
 # Gate 02 — M1 Semantic Freeze Report
 
 **Gate:** 02 — M1 Semantic Freeze  
-**State:** ACTIVE  
+**State:** VERIFYING  
 **Specification revision:** `docs/superpowers/specs/2026-08-12-universal-language-design.md`  
 **Implementation PR:** #1  
 **Activation baseline:** `fde1022471511fbc25eebdd3066bc7f52c8dc21f`  
 **Report date:** 2026-11-07
 
-> Gate 2 is ACTIVE. Gate 1 has PASSED. M1 must remain draft/unmerged until every Gate 2 exit criterion passes and the owner explicitly authorizes Gate 3.
+> Gate 2 is VERIFYING. Gate 1 has PASSED. All planned M1 semantic surfaces are frozen and the complete conformance corpus is green; M1 remains draft/unmerged until final exact-head verification is green and the owner explicitly authorizes Gate 3.
 
 ## 1. Requirements
 
@@ -24,12 +24,12 @@
 | G2-R09 | Freeze pattern matching and exhaustiveness semantics | PASS | Pattern/exhaustiveness corpus and `docs/M1_DATA_AND_PATTERN_SEMANTICS.md` passed pinned/locked CI 42439179273. |
 | G2-R10 | Freeze module/import/alias/canonical-identity semantics | PASS | Multi-file module corpus and `docs/M1_MODULE_SEMANTICS.md` passed pinned/locked CI 42439452953. |
 | G2-R11 | Freeze executable entry point and runtime trap model | PASS | Entry-point/runtime/primitive-print corpus and `docs/M1_RUNTIME_SEMANTICS.md` passed CI 42439452953 after run-mode harness support and G2-D04 repair. |
-| G2-R12 | Create implementation-independent `tests/conformance/` corpus organized by language feature | PASS | Corpus contains 138 cases across all 10 planned semantic feature groups plus harness seeds; runner uses only the public compiler API. |
-| G2-R13 | Record expected compile result, diagnostics, runtime value/output for every applicable conformance case | PASS | All 138 case directories contain validated `expect.txt`; applicable cases additionally freeze diagnostic codes, runtime values/traps, and exact stdout. |
-| G2-R14 | Achieve 100% conformance pass on pinned Rust 1.85.0 with locked dependencies | PASS | 138/138 conformance cases plus full workspace passed pinned Rust 1.85.0 / `--locked` CI 42439452953. Final exact-head closure CI is still required by G2-R17 after documentation/review updates. |
-| G2-R15 | Resolve every M1 semantic ambiguity and keep zero unresolved Critical/Major findings | VERIFYING | G2-D01 through G2-D04 are resolved; final whole-branch semantic review still required. |
-| G2-R16 | Audit README/examples/spec-facing docs against frozen M1 behavior | FAIL | Final documentation audit pending. |
-| G2-R17 | Complete final M1 semantic review and fresh CI | FAIL | Pending after all freeze decisions and conformance repairs. |
+| G2-R12 | Create implementation-independent `tests/conformance/` corpus organized by language feature | PASS | Corpus contains 144 cases across all 10 planned semantic feature groups plus harness seeds; runner uses only the public compiler API. |
+| G2-R13 | Record expected compile result, diagnostics, runtime value/output for every applicable conformance case | PASS | All 144 case directories contain validated `expect.txt`; applicable cases additionally freeze diagnostic codes, runtime values/traps, and exact stdout. |
+| G2-R14 | Achieve 100% conformance pass on pinned Rust 1.85.0 with locked dependencies | PASS | Corpus growth remained green through D05 and final-audit boundaries: 144/144 cases plus full workspace passed CI 42439868643 on pinned Rust 1.85.0 / `--locked`. Final exact-head documentation closure CI is still required by G2-R17. |
+| G2-R15 | Resolve every M1 semantic ambiguity and keep zero unresolved Critical/Major findings | PASS | Final whole-branch semantic review completed. G2-D01 through G2-D05 are RESOLVED; no Critical/Major semantic finding remains open. |
+| G2-R16 | Audit README/examples/spec-facing docs against frozen M1 behavior | PASS | README, examples, freeze design, and all M1 semantic/limitations documents were reconciled against the 144-case corpus and final decisions. |
+| G2-R17 | Complete final M1 semantic review and fresh CI | VERIFYING | Final semantic/diff review is complete with no open Critical/Major finding. Fresh exact-head pinned/locked CI is required after this documentation closure commit. |
 
 ## 2. Semantic Decision Ledger
 
@@ -71,12 +71,12 @@ The final run must also execute the complete independent M1 conformance corpus a
 
 ## 5. CI Evidence
 
-Harness foundation passed pinned/locked CI **42437909426** on Rust 1.85.0. Lexical/precedence freeze passed CI **42438222995** after correcting a fixture-encoding mistake that had accidentally encoded a valid escaped backslash instead of the intended invalid escape. Equality decision G2-D01 completed RED **42438388839** → GREEN **42438445377**. Full value/numeric/string/Unicode freeze passed CI **42438618212**. Task 4 evaluation/divergence repairs completed RED **42438765200** / **42438920554** → GREEN **42438971732**. Data/generic/pattern freeze passed CI **42439179273**. Module/runtime freeze completed harness RED **42439333570**, print RED **42439398693**, and full GREEN **42439452953** with 138/138 cases.
+Harness foundation passed pinned/locked CI **42437909426** on Rust 1.85.0. Lexical/precedence freeze passed CI **42438222995** after correcting a fixture-encoding mistake that had accidentally encoded a valid escaped backslash instead of the intended invalid escape. Equality decision G2-D01 completed RED **42438388839** → GREEN **42438445377**. Full value/numeric/string/Unicode freeze passed CI **42438618212**. Task 4 evaluation/divergence repairs completed RED **42438765200** / **42438920554** → GREEN **42438971732**. Data/generic/pattern freeze passed CI **42439179273**. Module/runtime freeze completed harness RED **42439333570**, print RED **42439398693**, and full GREEN **42439452953**. G2-D05 completed RED **42439659520** → GREEN **42439800603**. Final nominal-main/match-observability boundaries and the complete **144/144** corpus passed CI **42439868643**.
 
 ## 6. Conformance Evidence
 
 **Required location:** `tests/conformance/`  
-**Cases passed:** 138 / 138 complete planned feature corpus
+**Cases passed:** 144 / 144 complete Gate 2 corpus
 **Cases failed:** none retained; any mismatch becomes a semantic decision/finding  
 **Known exclusions:** none accepted unless explicitly justified in this report.
 
@@ -94,19 +94,19 @@ Not applicable to Gate 2 semantic freeze except to detect an accidental material
 
 ### Critical
 
-None identified yet.
+None identified.
 
 ### Major
 
-None identified yet.
+All Gate 2 semantic decisions/findings G2-D01 through G2-D05 are RESOLVED. No Major finding is open.
 
 ### Minor
 
-None identified yet.
+No new blocking Minor semantic finding remains open. Documented bootstrap/runtime presentation limitations are retained in `docs/M1_KNOWN_LIMITATIONS.md`.
 
 ## 10. Architecture Review
 
-Gate 2 must not redesign later-gate architecture unless semantic freeze evidence proves the current M1 representation cannot express the intended language behavior. Gate 3 remains responsible for architecture foundation work.
+Final Gate 2 architecture review is complete. Semantic code changes were limited to the checker and MIR lowering needed to enforce the frozen language contract: primitive-only equality/print, literal-true divergence, left-to-right value capture, and non-first-class function symbols. No Gate 3 architecture work was pulled forward. Gate 3 remains responsible for the durable compiler architecture foundation.
 
 ## 11. Security Review
 
@@ -114,7 +114,7 @@ Gate 2 reviews semantic trust boundaries only insofar as they affect frozen M1 b
 
 ## 12. Documentation Audit
 
-Pending. Frozen semantics must agree across the language/design docs, README, examples, M1 module/numeric/limitations docs, and conformance expectations.
+PASS for Gate 2. README, examples, the Gate 2 design, semantic documents, known-limitations document, and 144-case conformance expectations agree on the frozen M1 surface.
 
 ## 13. Cross-Cutting Language Laws
 
@@ -131,12 +131,12 @@ Any freeze decision that conflicts with a foundational law must be escalated rat
 
 ## 14. Known Limitations
 
-Gate 1 documented limitations remain inputs, not automatically frozen promises. Gate 2 must decide which limitations are intentionally part of M1 and which should be repaired before semantic freeze.
+`docs/M1_KNOWN_LIMITATIONS.md` is now part of the frozen Gate 2 M1 record. Its tab/CR-only diagnostic presentation and host-stack recursion limitations are accepted bootstrap/M1 limitations, not production guarantees.
 
 ## 15. Final Decision
 
-**Decision:** FAIL / ACTIVE  
-**Reason:** Gate 2 has just been activated; the semantic freeze and independent conformance corpus are not complete.
+**Decision:** FAIL / VERIFYING  
+**Reason:** All semantic-freeze requirements except the fresh exact-head closure CI are satisfied. Gate 2 remains VERIFYING until that run is green and the owner explicitly authorizes Gate 3.
 
 ### Owner authorization
 
