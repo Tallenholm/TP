@@ -1197,6 +1197,14 @@ impl TypeChecker {
                         )
                         .with_primary(span),
                     );
+                } else if !left.is_unknown() && !is_m1_equality_type(&left) {
+                    self.diagnostics.push(
+                        Diagnostic::error(
+                            "TP-E0300",
+                            format!("equality is not defined for `{left}` in M1"),
+                        )
+                        .with_primary(span),
+                    );
                 }
                 Type::Bool
             }
@@ -1491,6 +1499,13 @@ fn patterns_equivalent(left: &Pattern, right: &Pattern) -> bool {
         }
         _ => false,
     }
+}
+
+fn is_m1_equality_type(ty: &Type) -> bool {
+    matches!(
+        ty,
+        Type::Unit | Type::Bool | Type::I64 | Type::F64 | Type::String
+    )
 }
 
 fn types_compatible(expected: &Type, actual: &Type) -> bool {
