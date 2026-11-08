@@ -1,13 +1,13 @@
 # Gate 01 — M1 Adversarial Stabilization Report
 
 **Gate:** 01 — M1 Adversarial Stabilization  
-**State:** VERIFYING  
+**State:** PASSED  
 **Specification revision:** `docs/superpowers/specs/2026-08-12-universal-language-design.md`  
 **Implementation PR:** #1  
 **Head commit at report creation:** see PR head  
 **Report date:** 2026-11-07
 
-> This gate is NOT PASSED. PR #1 must remain draft/unmerged until this report satisfies every mandatory gate requirement and Timothy Holm approves advancement.
+> **Gate 1 PASSED on 2026-11-07.** PR #1 remains draft/unmerged because Gate 2 semantic freeze is now ACTIVE and M1 may merge only after Gate 2 passes.
 
 ## 1. Requirements
 
@@ -25,7 +25,7 @@
 | G1-R10 | Harden module graph/path/canonicalization semantics | PASS | Canonical-path module identity now deduplicates repeated/diamond/symlink imports; qualified imported nominal types/struct literals/enum constructors/patterns work; deterministic lowering and host-filesystem behavior are tested/documented. |
 | G1-R11 | Reproducible locked verification policy | PASS | `rust-toolchain.toml` pins Rust 1.85.0; CI prints rustc/cargo versions and runs clippy/tests/smokes with committed `Cargo.lock` via `--locked`. CI 42410172728 passed on rustc/cargo 1.85.0. |
 | G1-R12 | Zero unresolved Critical/Major findings | PASS | Final review findings M1-011/M1-012 completed RED -> GREEN repair in CI 42410877129 -> 42411019313. No Critical/Major finding remains open. Minor M1-013/M1-014 are resolved; M1-015/M1-016 are documented non-blocking limitations. |
-| G1-R13 | Full tests/format/lint/fresh CI after all repairs | PASS | Exact-head `b0523f9c727fd9c6a07f4756d02e35b348d4aa86` passed push CI 42411310293 and PR CI 42411314256: pinned Rust 1.85.0, fmt, locked Clippy, locked full workspace tests, hello smoke, Fibonacci smoke. |
+| G1-R13 | Full tests/format/lint/fresh CI after all repairs | PASS | Closure baseline head `fde1022471511fbc25eebdd3066bc7f52c8dc21f` passed CI 42437313141 on pinned Rust 1.85.0 with fmt, locked Clippy, locked full workspace tests, hello smoke, and Fibonacci smoke. |
 | G1-R14 | Documentation accurately reflects stabilized M1 behavior | PASS | README plus `M1_MODULE_SEMANTICS.md`, `M1_NUMERIC_SEMANTICS.md`, and `M1_KNOWN_LIMITATIONS.md` now document implemented M1 behavior, locked future work, and known non-blocking limitations without production/performance claims. |
 
 ## 2. Adversarial Review Ledger
@@ -112,11 +112,11 @@ cargo test --workspace --locked
 
 Additional Gate 1 conformance/adversarial commands must be recorded here once created.
 
-**Current final verification state:** PASS — current pre-cleanup head `d8e755f70a481f27f65c3f249acc270562c9d136` passed pinned/locked CI **42411408413** and **42411403194** with fmt, Clippy, full workspace tests, and both smoke programs. A fresh CI run will be required after this evidence-only cleanup commit.
+**Current final verification state:** PASS — closure baseline head `fde1022471511fbc25eebdd3066bc7f52c8dc21f` passed pinned/locked CI **42437313141** with fmt, Clippy, full workspace tests, and both smoke programs.
 
 ## 5. CI Evidence
 
-Reproducibility baseline CI 42410172728 established rustc/cargo 1.85.0 with locked verification. Head `d8e755f70a481f27f65c3f249acc270562c9d136` passed CI **42411408413** and **42411403194** using the same pinned/locked pipeline. Gate Policy failures **42411408467** and **42411429334** are expected while the gate report intentionally remains non-PASS and owner authorization remains NO. A fresh CI run is required after this evidence-only cleanup commit.
+Reproducibility baseline CI 42410172728 established rustc/cargo 1.85.0 with locked verification. Closure baseline head `fde1022471511fbc25eebdd3066bc7f52c8dc21f` passed CI **42437313141** using the same pinned/locked pipeline. Earlier Gate Policy failures were expected while owner authorization was absent; authorization is now recorded below.
 
 ## 6. Conformance Evidence
 
@@ -181,15 +181,15 @@ PASS for Gate 1. Repository governance marks later gates locked; README and dedi
 
 ## 14. Known Limitations
 
-Known non-blocking M1 limitations are documented in `docs/M1_KNOWN_LIMITATIONS.md`; module semantics/limits are in `docs/M1_MODULE_SEMANTICS.md`; numeric semantics are in `docs/M1_NUMERIC_SEMANTICS.md`. No Critical/Major finding is open. Gate 1 still requires one fresh final CI run after this documentation/evidence update and explicit owner authorization before PASS.
+Known non-blocking M1 limitations are documented in `docs/M1_KNOWN_LIMITATIONS.md`; module semantics/limits are in `docs/M1_MODULE_SEMANTICS.md`; numeric semantics are in `docs/M1_NUMERIC_SEMANTICS.md`. No Critical/Major finding is open. Gate 1 closure verification and owner authorization are complete.
 
 ## 15. Final Decision
 
-**Decision:** FAIL / VERIFYING  
-**Reason:** Every technical Gate 1 requirement G1-R01 through G1-R14 is satisfied. After this evidence-only cleanup receives fresh pinned/locked CI, Gate 1 remains VERIFYING solely until explicit owner authorization to pass Gate 1/open Gate 2 is recorded.
+**Decision:** PASS  
+**Reason:** G1-R01 through G1-R14 are satisfied; all Critical/Major findings are resolved; final whole-branch review, stress/conformance evidence, documentation audit, pinned/locked verification, and explicit owner authorization are complete.
 
 ### Owner authorization
 
-**Next gate authorized to open:** NO  
+**Next gate authorized to open:** YES  
 **Owner:** Timothy Holm  
-**Approval record:** Owner explicitly required a complete gated plan before further advancement; Gate 2 remains locked until Gate 1 is formally passed and owner authorization is recorded.
+**Approval record:** On 2026-11-07, the owner explicitly stated: “I authorize Gate 1 PASS and Gate 2 ACTIVE.”

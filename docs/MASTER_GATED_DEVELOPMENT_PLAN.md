@@ -678,4 +678,4 @@ A reopened gate automatically locks dependent later gates until the regression i
 
 ## 8. Current Direction
 
-The current project priority is **Gate 0 + Gate 1**. Gate 2 and everything after it remains LOCKED until the status document and gate reports prove otherwise.
+The current project priority is **Gate 2 — M1 Semantic Freeze**. Gates 0 and 1 are PASSED. Gate 3 and everything after it remains LOCKED until Gate 2 passes and the owner explicitly authorizes the next gate.
