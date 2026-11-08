@@ -1,0 +1,2 @@
+fn f(x: Bool) -> i64 { if x { if true { return 7; } } 3 }
+fn main() -> i64 { f(true) }

@@ -17,9 +17,9 @@
 | G2-R02 | Freeze operator precedence and associativity | PASS | Observable precedence/associativity corpus passed pinned/locked CI 42438222995. |
 | G2-R03 | Freeze literals, integer overflow/traps, and floating-point semantics | PASS | Numeric conformance corpus and `docs/M1_NUMERIC_SEMANTICS.md` passed pinned/locked CI 42438618212. |
 | G2-R04 | Freeze equality, strings, and Unicode semantics | PASS | G2-D01 completed RED → GREEN; value/string/Unicode corpus and `docs/M1_VALUE_SEMANTICS.md` passed pinned/locked CI 42438618212. |
-| G2-R05 | Freeze scopes, shadowing, bindings, and mutability | FAIL | Active work not yet completed. |
-| G2-R06 | Freeze function calls, recursion, returns, divergence, and control-flow semantics | FAIL | Active work not yet completed. |
-| G2-R07 | Freeze `if` and `while` semantics | FAIL | Active work not yet completed. |
+| G2-R05 | Freeze scopes, shadowing, bindings, and mutability | VERIFYING | Binding/scope/mutation conformance cases added; awaiting Task 4 CI. |
+| G2-R06 | Freeze function calls, recursion, returns, divergence, and control-flow semantics | VERIFYING | Function/return/evaluation-order/short-circuit cases added; G2-D02 `while true` divergence decision pending RED → GREEN. |
+| G2-R07 | Freeze `if` and `while` semantics | VERIFYING | `if`/`while` conformance cases added; G2-D02 pending RED → GREEN. |
 | G2-R08 | Freeze structs, enums, generics, and optional sugar semantics | FAIL | Active work not yet completed. |
 | G2-R09 | Freeze pattern matching and exhaustiveness semantics | FAIL | Active work not yet completed. |
 | G2-R10 | Freeze module/import/alias/canonical-identity semantics | FAIL | `docs/M1_MODULE_SEMANTICS.md` is input; independent conformance cases still required. |
@@ -38,6 +38,7 @@ Every ambiguity discovered during Gate 2 must be recorded here until explicitly 
 | ID | Severity | Surface | Question / ambiguity | Decision | Evidence | Status |
 |---|---|---|---|---|---|---|
 | G2-D01 | Major | Equality | Should M1 freeze the interpreter's broad Rust-derived structural/function equality for all compatible values? | **No.** M1 equality is defined only for `Unit`, `Bool`, matching numeric primitives, and `String`. Nominal struct/enum values and function values are not equality-comparable in M1; richer equality is deferred to a deliberate later design. | RED CI 42438388839 accepted enum equality with no diagnostics; GREEN CI 42438445377 after checker restriction. | RESOLVED |
+| G2-D02 | Major | `while` / divergence | Should a literal `while true { ... }` be treated as definitely diverging in M1? | **Yes.** M1 has no `break`/`continue`; a literal-`true` loop cannot fall through. It has internal `Never` flow type and may satisfy any function result, while non-literal `while` remains potentially fallthrough/`Unit`. | Task 4 conformance RED pending. | ACTIVE |
 
 ## 3. Test-Driven Evidence
 
