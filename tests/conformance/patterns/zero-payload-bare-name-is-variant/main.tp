@@ -1,0 +1,2 @@
+enum Choice { Yes, No }
+fn main() -> i64 { let x = Yes; match x { Yes => 42, No => 0 } }

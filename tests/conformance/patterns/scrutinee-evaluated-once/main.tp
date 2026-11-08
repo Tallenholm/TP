@@ -1,0 +1,2 @@
+enum Wrap<T> { Wrap(T) }
+fn main() -> i64 { var x = 0; match Wrap(x = x + 1) { Wrap(v) => v * 10 + x } }

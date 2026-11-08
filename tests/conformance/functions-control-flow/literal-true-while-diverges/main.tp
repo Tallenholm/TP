@@ -1,0 +1,1 @@
+fn diverges() -> i64 { while true { } }

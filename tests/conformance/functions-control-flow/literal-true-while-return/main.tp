@@ -1,0 +1,2 @@
+fn value() -> i64 { while true { return 42; } }
+fn main() -> i64 { value() }

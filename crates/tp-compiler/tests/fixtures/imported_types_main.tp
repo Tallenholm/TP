@@ -1,0 +1,15 @@
+import imported_types as model
+
+fn read(user: model.User) -> i64 {
+    user.id
+}
+
+fn main() -> i64 {
+    let user: model.User = model.User { id: 21 };
+    let maybe: model.Maybe<i64> = model.Some(21);
+
+    match maybe {
+        model.Some(value) => read(user) + value,
+        model.None => 0
+    }
+}

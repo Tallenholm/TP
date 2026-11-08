@@ -1,0 +1,2 @@
+fn unit() { }
+fn main() -> Bool { unit() == unit() }

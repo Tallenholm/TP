@@ -1,0 +1,3 @@
+import left
+import right
+fn main() -> i64 { left.left() + right.right() }

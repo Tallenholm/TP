@@ -1,0 +1,2 @@
+import shared
+fn left() -> i64 { shared.value() }

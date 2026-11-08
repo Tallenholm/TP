@@ -1,0 +1,2 @@
+outcome=run_compile_fail
+diagnostics=TP-E0400

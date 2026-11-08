@@ -1,0 +1,3 @@
+enum List<T> { Cons(T, List<T>), Nil }
+fn head(x: List<i64>) -> i64 { match x { Cons(v, _) => v, Nil => 0 } }
+fn main() -> i64 { head(Cons(42, Nil)) }

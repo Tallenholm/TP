@@ -1,0 +1,1 @@
+fn broken(x: Bool) -> i64 { while x { return 1; } }

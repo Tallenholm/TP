@@ -1,0 +1,2 @@
+enum Wrap<T> { Wrap(T), Empty }
+fn main() -> i64 { let x: Wrap<i64> = Wrap(42); match x { Wrap(v) => v, Empty => 0 } }

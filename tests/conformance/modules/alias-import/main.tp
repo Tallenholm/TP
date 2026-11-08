@@ -1,0 +1,2 @@
+import util as helper
+fn main() -> i64 { helper.twice(21) }

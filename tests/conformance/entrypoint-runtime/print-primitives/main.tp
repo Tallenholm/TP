@@ -1,0 +1,2 @@
+fn unit() { }
+fn main() { print(unit()); print(true); print(-42); print(1.5); print("hello"); }

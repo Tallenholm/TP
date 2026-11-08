@@ -1,0 +1,2 @@
+enum Option<T> { Some(T), None }
+fn accept(value: i64?) { }

@@ -1,0 +1,2 @@
+fn café() -> i64 { 42 }
+fn main() -> i64 { café() }

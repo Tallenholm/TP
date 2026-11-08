@@ -1,0 +1,2 @@
+enum Flag { On, Off }
+fn main() -> i64 { let x = On(); match x { On => 1, Off => 0 } }
