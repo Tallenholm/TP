@@ -61,18 +61,12 @@ impl ModuleGraph {
     pub(crate) fn finish(&mut self) {
         self.nodes.sort_by(|left, right| left.id.cmp(&right.id));
         self.edges.sort_by(|left, right| {
-            (
-                &left.from,
-                &left.to,
-                left.alias.as_str(),
-                left.span.start,
-            )
-                .cmp(&(
-                    &right.from,
-                    &right.to,
-                    right.alias.as_str(),
-                    right.span.start,
-                ))
+            (&left.from, &left.to, left.alias.as_str(), left.span.start).cmp(&(
+                &right.from,
+                &right.to,
+                right.alias.as_str(),
+                right.span.start,
+            ))
         });
     }
 }

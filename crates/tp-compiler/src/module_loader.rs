@@ -5,9 +5,9 @@ use std::{
 };
 
 use crate::{
-    Block, Diagnostic, Expr, ExprKind, FnDecl, ImportDecl, Item, Lexer, MatchArm, Module, Param,
-    ModuleGraph, ModuleId, ModuleImport, ModuleNode, Parser, Pattern, PatternKind, SourceFile,
-    SourceId, SourceManager, Stmt, StructDecl, TypeRef, VariantDecl,
+    Block, Diagnostic, Expr, ExprKind, FnDecl, ImportDecl, Item, Lexer, MatchArm, Module,
+    ModuleGraph, ModuleId, ModuleImport, ModuleNode, Param, Parser, Pattern, PatternKind,
+    SourceFile, SourceId, SourceManager, Stmt, StructDecl, TypeRef, VariantDecl,
 };
 
 pub struct ModuleLoader;
@@ -35,14 +35,7 @@ impl ModuleLoader {
         let mut loaded = HashMap::new();
         let mut sources = SourceManager::default();
         let mut graph = ModuleGraph::default();
-        let result = load_recursive(
-            path,
-            "",
-            &mut stack,
-            &mut loaded,
-            &mut sources,
-            &mut graph,
-        );
+        let result = load_recursive(path, "", &mut stack, &mut loaded, &mut sources, &mut graph);
         graph.finish();
         match result {
             Ok(loaded_module) => ModuleLoadReport {
