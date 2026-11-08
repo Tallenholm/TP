@@ -111,10 +111,16 @@ impl fmt::Display for HirVerificationKind {
                 write!(f, "assignment targets immutable symbol {}", symbol.raw())
             }
             Self::ExpressionSemanticMismatch { expected, actual } => {
-                write!(f, "HIR expression type {actual} differs from checked type {expected:?}")
+                write!(
+                    f,
+                    "HIR expression type {actual} differs from checked type {expected:?}"
+                )
             }
             Self::BlockSemanticMismatch { expected, actual } => {
-                write!(f, "HIR block type {actual} differs from checked type {expected:?}")
+                write!(
+                    f,
+                    "HIR block type {actual} differs from checked type {expected:?}"
+                )
             }
             Self::BindingSemanticMismatch {
                 expected,
@@ -126,7 +132,10 @@ impl fmt::Display for HirVerificationKind {
                 actual_symbol.raw()
             ),
             Self::GlobalSemanticMismatch { expected, actual } => {
-                write!(f, "HIR global kind {actual:?} differs from checked {expected:?}")
+                write!(
+                    f,
+                    "HIR global kind {actual:?} differs from checked {expected:?}"
+                )
             }
         }
     }
