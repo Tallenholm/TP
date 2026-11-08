@@ -1,6 +1,6 @@
 use tp_compiler::{
-    BlockId, Compiler, Constant, LocalId, MirModule, MirPattern, MirStatement, MirVerificationKind,
-    MirVerifier, Operand, Rvalue, Terminator,
+    BlockId, Compiler, Constant, Interpreter, LocalId, MirModule, MirPattern, MirStatement,
+    MirVerificationKind, MirVerifier, Operand, Rvalue, Terminator,
 };
 
 fn sample() -> MirModule {
@@ -248,4 +248,26 @@ fn rejects_undeclared_assignment_target() {
         )),
         "{errors:#?}"
     );
+}
+
+#[test]
+fn direct_interpreter_rejects_malformed_block_ids() {
+    let mut mir = sample();
+    mir.functions[0].blocks[0].id = BlockId(999);
+    let mut interpreter = Interpreter::new(&mir);
+    let error = interpreter
+        .run_main()
+        .expect_err("raw interpreter must not execute incorrectly indexed MIR");
+    assert_eq!(error.code, "TP-E0600");
+}
+
+#[test]
+fn direct_interpreter_rejects_malformed_local_ids() {
+    let mut mir = sample();
+    mir.functions[0].locals[0].id = LocalId(999);
+    let mut interpreter = Interpreter::new(&mir);
+    let error = interpreter
+        .run_main()
+        .expect_err("raw interpreter must not execute incorrectly indexed locals");
+    assert_eq!(error.code, "TP-E0600");
 }
