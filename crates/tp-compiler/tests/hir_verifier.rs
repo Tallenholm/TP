@@ -287,10 +287,9 @@ fn rejects_hir_expression_type_that_differs_from_semantic_model() {
     let errors = HirVerifier::verify_checked(&hir, snapshot.semantic(), snapshot.sources())
         .expect_err("tampered HIR expression type must fail");
     assert!(
-        errors.iter().any(|error| matches!(
-            error.kind,
-            HirVerificationKind::ExpressionSemanticMismatch { .. }
-        )),
+        errors
+            .iter()
+            .any(|error| matches!(error.kind, HirVerificationKind::ExpressionSemanticMismatch { .. })),
         "{errors:#?}"
     );
 }
@@ -308,10 +307,9 @@ fn rejects_binding_type_that_differs_from_semantic_model() {
     let errors = HirVerifier::verify_checked(&hir, snapshot.semantic(), snapshot.sources())
         .expect_err("tampered checked binding type must fail");
     assert!(
-        errors.iter().any(|error| matches!(
-            error.kind,
-            HirVerificationKind::BindingSemanticMismatch { .. }
-        )),
+        errors
+            .iter()
+            .any(|error| matches!(error.kind, HirVerificationKind::BindingSemanticMismatch { .. })),
         "{errors:#?}"
     );
 }
@@ -326,10 +324,9 @@ fn rejects_block_type_that_differs_from_semantic_model() {
     let errors = HirVerifier::verify_checked(&hir, snapshot.semantic(), snapshot.sources())
         .expect_err("tampered block result type must fail");
     assert!(
-        errors.iter().any(|error| matches!(
-            error.kind,
-            HirVerificationKind::BlockSemanticMismatch { .. }
-        )),
+        errors
+            .iter()
+            .any(|error| matches!(error.kind, HirVerificationKind::BlockSemanticMismatch { .. })),
         "{errors:#?}"
     );
 }
@@ -361,10 +358,9 @@ fn rejects_global_resolution_kind_that_differs_from_semantic_model() {
     let errors = HirVerifier::verify_checked(&hir, snapshot.semantic(), snapshot.sources())
         .expect_err("changed global resolution must fail");
     assert!(
-        errors.iter().any(|error| matches!(
-            error.kind,
-            HirVerificationKind::GlobalSemanticMismatch { .. }
-        )),
+        errors
+            .iter()
+            .any(|error| matches!(error.kind, HirVerificationKind::GlobalSemanticMismatch { .. })),
         "{errors:#?}"
     );
 }
