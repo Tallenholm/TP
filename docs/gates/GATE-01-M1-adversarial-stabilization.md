@@ -49,6 +49,8 @@ Every finding must remain here until resolved. Do not delete findings after fixe
 | M1-012 | Major | Type system / optional sugar | `T?` lowered directly to nominal `Option<T>` without proving `Option` was declared, bypassing the declared-nominal-type rule. | `optional_sugar_requires_declared_option_type`; positive declared-Option boundary. | `T?` now requires a declared arity-1 nominal `Option<T>`; otherwise TP-E0200 is emitted and no synthetic Option type is accepted. | RESOLVED |
 | M1-013 | Minor | Pattern matching | Exact duplicate refutable nested enum payload patterns (for example two `Some(1)` arms) were not recognized as unreachable. | `duplicate_refutable_variant_pattern_is_unreachable`. | Match checking now tracks exact recursive pattern shapes separately from exhaustiveness coverage and rejects duplicate refutable arms as unreachable. | RESOLVED |
 | M1-014 | Minor | Floating-point semantics | Finite float literals were specified, but arithmetic producing Infinity/NaN was undocumented/untested. | `floating_point_arithmetic_may_produce_ieee_non_finite_values`; interpreter `eval_f64`. | `docs/M1_NUMERIC_SEMANTICS.md` records finite literals + IEEE runtime non-finite results, with TP traps for divide/remainder by ±0.0; CI 42411121540 green. | RESOLVED |
+| M1-015 | Minor | Diagnostic presentation | Terminal caret placement does not expand tab characters to terminal tab stops, and CR-only files are not modeled as multiple source lines. | Final diagnostics review; documented in `docs/M1_KNOWN_LIMITATIONS.md`. | Accepted as a non-blocking M1 presentation/input limitation; JSON byte/line/column ranges remain structured, LF/CRLF are supported, and later tooling may improve visual tab handling. | DOCUMENTED |
+| M1-016 | Minor | Interpreter resource limits | Recursive TP calls use the host Rust call stack with no TP-specific recursion-depth guard, so intentionally extreme recursion can exhaust the host process stack. | Final interpreter/runtime review; documented in `docs/M1_KNOWN_LIMITATIONS.md`. | Accepted as a non-blocking M1 runtime-containment limitation; a deliberate recursion/resource policy belongs to later runtime/security hardening unless Gate 2 freezes a stronger requirement. | DOCUMENTED |
 
 Severity may only be changed with documented reasoning. More findings will be added as review continues.
 
@@ -110,11 +112,11 @@ cargo test --workspace --locked
 
 Additional Gate 1 conformance/adversarial commands must be recorded here once created.
 
-**Current final verification state:** PASS — exact-head `b0523f9c727fd9c6a07f4756d02e35b348d4aa86` passed push CI **42411310293** and PR CI **42411314256** with pinned Rust 1.85.0, locked dependencies, fmt, Clippy, full workspace tests, and both smoke programs.
+**Current final verification state:** PASS — current pre-cleanup head `d8e755f70a481f27f65c3f249acc270562c9d136` passed pinned/locked CI **42411408413** and **42411403194** with fmt, Clippy, full workspace tests, and both smoke programs. A fresh CI run will be required after this evidence-only cleanup commit.
 
 ## 5. CI Evidence
 
-Reproducibility baseline CI 42410172728 established rustc/cargo 1.85.0 with locked verification. Final code/docs head `b0523f9c727fd9c6a07f4756d02e35b348d4aa86` then passed push CI **42411310293** and PR CI **42411314256** using the same pinned/locked pipeline. Gate Policy failure on the PR is expected while owner authorization remains NO.
+Reproducibility baseline CI 42410172728 established rustc/cargo 1.85.0 with locked verification. Head `d8e755f70a481f27f65c3f249acc270562c9d136` passed CI **42411408413** and **42411403194** using the same pinned/locked pipeline. Gate Policy failures **42411408467** and **42411429334** are expected while the gate report intentionally remains non-PASS and owner authorization remains NO. A fresh CI run is required after this evidence-only cleanup commit.
 
 ## 6. Conformance Evidence
 
@@ -144,7 +146,7 @@ Not a Gate 1 exit focus unless a correctness repair causes a material regression
 
 ### Critical
 
-None identified yet. Initial full M1 review completed 2026-11-07. Final whole-branch review is still required after repairs.
+None identified. The initial and final whole-branch Gate 1 reviews are complete.
 
 ### Major
 
@@ -154,7 +156,7 @@ DOCUMENTED non-blocking Minor limitations: M1-015, M1-016.
 
 ### Minor
 
-Not yet fully catalogued.
+M1-013 and M1-014 are RESOLVED. M1-015 and M1-016 are explicitly DOCUMENTED as non-blocking M1 limitations in `docs/M1_KNOWN_LIMITATIONS.md`.
 
 ## 10. Architecture Review
 
@@ -184,7 +186,7 @@ Known non-blocking M1 limitations are documented in `docs/M1_KNOWN_LIMITATIONS.m
 ## 15. Final Decision
 
 **Decision:** FAIL / VERIFYING  
-**Reason:** Every technical Gate 1 requirement G1-R01 through G1-R14 is satisfied and final pinned/locked CI is green. Gate 1 remains VERIFYING solely because explicit owner authorization to pass Gate 1/open Gate 2 has not yet been recorded.
+**Reason:** Every technical Gate 1 requirement G1-R01 through G1-R14 is satisfied. After this evidence-only cleanup receives fresh pinned/locked CI, Gate 1 remains VERIFYING solely until explicit owner authorization to pass Gate 1/open Gate 2 is recorded.
 
 ### Owner authorization
 
