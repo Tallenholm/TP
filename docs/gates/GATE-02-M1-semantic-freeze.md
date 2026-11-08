@@ -20,8 +20,8 @@
 | G2-R05 | Freeze scopes, shadowing, bindings, and mutability | PASS | Scope/binding/mutability corpus and `docs/M1_CONTROL_FLOW_SEMANTICS.md` passed pinned/locked CI 42438971732. |
 | G2-R06 | Freeze function calls, recursion, returns, divergence, and control-flow semantics | PASS | Function/return/recursion/evaluation-order/short-circuit corpus passed CI 42438971732 after G2-D02/G2-D03 RED → GREEN repairs. |
 | G2-R07 | Freeze `if` and `while` semantics | PASS | `if`/`while` corpus passed CI 42438971732; literal `while true` is frozen as definitely diverging. |
-| G2-R08 | Freeze structs, enums, generics, and optional sugar semantics | FAIL | Active work not yet completed. |
-| G2-R09 | Freeze pattern matching and exhaustiveness semantics | FAIL | Active work not yet completed. |
+| G2-R08 | Freeze structs, enums, generics, and optional sugar semantics | VERIFYING | Nominal/generic data conformance corpus and `docs/M1_DATA_AND_PATTERN_SEMANTICS.md` added; awaiting Task 5 CI. |
+| G2-R09 | Freeze pattern matching and exhaustiveness semantics | VERIFYING | Pattern/exhaustiveness corpus and semantic document added; awaiting Task 5 CI. |
 | G2-R10 | Freeze module/import/alias/canonical-identity semantics | FAIL | `docs/M1_MODULE_SEMANTICS.md` is input; independent conformance cases still required. |
 | G2-R11 | Freeze executable entry point and runtime trap model | FAIL | Active work not yet completed. |
 | G2-R12 | Create implementation-independent `tests/conformance/` corpus organized by language feature | FAIL | Harness foundation exists; full feature corpus is still being built. |

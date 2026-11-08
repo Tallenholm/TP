@@ -1,0 +1,2 @@
+enum Maybe<T> { Some(T), None }
+fn main() -> i64 { let x: Maybe<i64> = Some(42); match x { Some(v) => v, None => 0 } }

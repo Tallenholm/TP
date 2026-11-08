@@ -1,0 +1,2 @@
+struct User { id: i64, name: String }
+fn main() -> i64 { let u = User { name: "tp", id: 42 }; u.id }

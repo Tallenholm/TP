@@ -1,0 +1,2 @@
+enum Result<T> { Ok(T), Err(String) }
+fn main() { let x: Result<i64> = Err(1); }

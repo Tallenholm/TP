@@ -1,0 +1,2 @@
+struct Box<T> { value: T }
+fn take(x: Box<i64, String>) { }

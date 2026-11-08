@@ -1,0 +1,2 @@
+enum Pair<T> { Both(T, T) }
+fn main() { Both(1, "x"); }

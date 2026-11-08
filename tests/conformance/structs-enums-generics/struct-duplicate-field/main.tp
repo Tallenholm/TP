@@ -1,0 +1,2 @@
+struct Pair { a: i64 }
+fn main() { Pair { a: 1, a: 2 }; }
