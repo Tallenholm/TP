@@ -17,7 +17,10 @@ fn source_snapshot_shares_authoritative_binding_and_source_identity() {
 
     assert_eq!(query.module().items.len(), 1);
     let function = &query.hir().functions[0];
-    let HirStmt::Let { symbol, span, ty, .. } = &function.body.statements[0] else {
+    let HirStmt::Let {
+        symbol, span, ty, ..
+    } = &function.body.statements[0]
+    else {
         panic!("expected typed let statement");
     };
     let (checked_id, checked_type) = query
@@ -75,15 +78,28 @@ fn path_snapshot_keeps_diamond_import_sources_unique() {
         .filter(|source| source.name().ends_with("diamond_shared.tp"))
         .count();
     assert_eq!(count, 1);
-    assert!(query.hir().functions.iter().any(|function| function.name == "main"));
-    assert!(query.mir().functions.iter().any(|function| function.name == "main"));
+    assert!(
+        query
+            .hir()
+            .functions
+            .iter()
+            .any(|function| function.name == "main")
+    );
+    assert!(
+        query
+            .mir()
+            .functions
+            .iter()
+            .any(|function| function.name == "main")
+    );
 }
 
 #[test]
 fn invalid_query_returns_diagnostics_instead_of_partial_ir() {
-    let result = Compiler::new().analyze_source(
-        "invalid.tp",
-        "fn main() -> i64 { nonexistent_value }",
+    let result =
+        Compiler::new().analyze_source("invalid.tp", "fn main() -> i64 { nonexistent_value }");
+    assert!(
+        result.is_err(),
+        "invalid source must not expose unchecked IR"
     );
-    assert!(result.is_err(), "invalid source must not expose unchecked IR");
 }
