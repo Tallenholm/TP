@@ -225,15 +225,17 @@ fn run_case(case: &Path) -> Result<(), String> {
             }
         }
         Outcome::Run => {
-            let report = compiler.run_path(&main_path).map_err(|failure| match failure {
-                RunFailure::Compile(diagnostics) => format!(
-                    "expected run success, got compile diagnostics {:?}",
-                    diagnostic_codes(&diagnostics)
-                ),
-                RunFailure::Runtime(error) => {
-                    format!("expected run success, got runtime error {error}")
-                }
-            })?;
+            let report = compiler
+                .run_path(&main_path)
+                .map_err(|failure| match failure {
+                    RunFailure::Compile(diagnostics) => format!(
+                        "expected run success, got compile diagnostics {:?}",
+                        diagnostic_codes(&diagnostics)
+                    ),
+                    RunFailure::Runtime(error) => {
+                        format!("expected run success, got runtime error {error}")
+                    }
+                })?;
 
             if let Some(expected) = &expectation.value {
                 if !value_matches(expected, &report.value) {
