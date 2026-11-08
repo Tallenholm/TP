@@ -2,8 +2,8 @@ use std::path::Path;
 
 use crate::{
     Diagnostic, HirLowerer, HirModule, HirVerifier, Interpreter, Lexer, MirLowerer, MirModule,
-    MirVerifier, Module, ModuleLoader, Parser, RuntimeError, SemanticModel, SourceFile,
-    SourceManager, TypeChecker, Value,
+    MirVerifier, Module, ModuleGraph, ModuleLoader, Parser, RuntimeError, SemanticModel,
+    SourceFile, SourceManager, TypeChecker, Value,
 };
 
 #[derive(Debug, Default)]
@@ -32,6 +32,7 @@ impl Compiler {
         let mir = Self::verified_mir(&hir)?;
         Ok(CompilationSnapshot {
             sources: checked.sources,
+            graph: checked.graph,
             module: checked.module,
             semantic: checked.semantic,
             hir,
@@ -166,6 +167,7 @@ impl Compiler {
                 module,
                 semantic: checked.semantic,
                 sources,
+                graph: None,
             })
         } else {
             Err(checked.diagnostics)
@@ -184,6 +186,7 @@ impl Compiler {
                 module,
                 semantic: checked.semantic,
                 sources: loaded.sources,
+                graph: Some(loaded.graph),
             })
         } else {
             Err(checked.diagnostics)
@@ -195,12 +198,14 @@ struct CheckedModule {
     module: Module,
     semantic: SemanticModel,
     sources: SourceManager,
+    graph: Option<ModuleGraph>,
 }
 
 /// A single checked compilation; numeric source/symbol IDs are session-scoped.
 #[derive(Debug)]
 pub struct CompilationSnapshot {
     sources: SourceManager,
+    graph: Option<ModuleGraph>,
     module: Module,
     semantic: SemanticModel,
     hir: HirModule,
@@ -210,6 +215,10 @@ pub struct CompilationSnapshot {
 impl CompilationSnapshot {
     pub fn sources(&self) -> &SourceManager {
         &self.sources
+    }
+
+    pub fn module_graph(&self) -> Option<&ModuleGraph> {
+        self.graph.as_ref()
     }
 
     pub fn module(&self) -> &Module {

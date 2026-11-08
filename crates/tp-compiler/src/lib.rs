@@ -10,6 +10,7 @@ mod lower_hir;
 mod lower_mir;
 mod mir;
 mod mir_verify;
+mod module_graph;
 mod module_loader;
 #[allow(clippy::while_let_loop)]
 mod parser;
@@ -44,6 +45,7 @@ pub use mir::{
     MirStatement, Operand, Rvalue, Terminator,
 };
 pub use mir_verify::{MirVerificationError, MirVerificationKind, MirVerifier};
+pub use module_graph::{ModuleGraph, ModuleId, ModuleImport, ModuleNode};
 pub use module_loader::{ModuleLoadReport, ModuleLoader};
 pub use parser::{ParseResult, Parser};
 pub use pipeline::{CompilationSnapshot, CompileReport, Compiler, RunFailure, RunReport};

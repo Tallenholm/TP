@@ -6,8 +6,8 @@ use std::{
 
 use crate::{
     Block, Diagnostic, Expr, ExprKind, FnDecl, ImportDecl, Item, Lexer, MatchArm, Module, Param,
-    Parser, Pattern, PatternKind, SourceFile, SourceManager, Stmt, StructDecl, TypeRef,
-    VariantDecl,
+    ModuleGraph, ModuleId, ModuleImport, ModuleNode, Parser, Pattern, PatternKind, SourceFile,
+    SourceId, SourceManager, Stmt, StructDecl, TypeRef, VariantDecl,
 };
 
 pub struct ModuleLoader;
@@ -17,6 +17,7 @@ pub struct ModuleLoadReport {
     pub module: Option<Module>,
     pub diagnostics: Vec<Diagnostic>,
     pub sources: SourceManager,
+    pub graph: ModuleGraph,
 }
 
 impl ModuleLoader {
@@ -33,18 +34,30 @@ impl ModuleLoader {
         let mut stack = Vec::new();
         let mut loaded = HashMap::new();
         let mut sources = SourceManager::default();
-        match load_recursive(path, "", &mut stack, &mut loaded, &mut sources) {
+        let mut graph = ModuleGraph::default();
+        let result = load_recursive(
+            path,
+            "",
+            &mut stack,
+            &mut loaded,
+            &mut sources,
+            &mut graph,
+        );
+        graph.finish();
+        match result {
             Ok(loaded_module) => ModuleLoadReport {
                 module: Some(Module {
                     items: loaded_module.items,
                 }),
                 diagnostics: Vec::new(),
                 sources,
+                graph,
             },
             Err(diagnostics) => ModuleLoadReport {
                 module: None,
                 diagnostics,
                 sources,
+                graph,
             },
         }
     }
@@ -62,6 +75,7 @@ fn load_recursive(
     stack: &mut Vec<PathBuf>,
     loaded: &mut HashMap<PathBuf, String>,
     sources: &mut SourceManager,
+    graph: &mut ModuleGraph,
 ) -> Result<LoadedModule, Vec<Diagnostic>> {
     let canonical = canonicalize_for_load(path)?;
     if let Some(index) = stack.iter().position(|entry| entry == &canonical) {
@@ -92,7 +106,12 @@ fn load_recursive(
             format!("unable to read module `{}`: {error}", canonical.display()),
         )]
     })?;
-    let module = parse_file(&canonical, &source, sources)?;
+    let (module, source_id) = parse_file(&canonical, &source, sources)?;
+    graph.add_node(ModuleNode {
+        id: ModuleId::from_canonical_path(canonical.clone()),
+        namespace: namespace.clone(),
+        source: source_id,
+    });
 
     stack.push(canonical.clone());
     let imports: Vec<ImportDecl> = module
@@ -129,14 +148,28 @@ fn load_recursive(
             .parent()
             .unwrap_or_else(|| Path::new("."))
             .join(format!("{}.tp", import.module));
+        let child_canonical = match canonicalize_for_load(&child_path) {
+            Ok(path) => path,
+            Err(diagnostics) => {
+                stack.pop();
+                return Err(diagnostics);
+            }
+        };
         match load_recursive(
-            &child_path,
+            &child_canonical,
             &child_requested_namespace,
             stack,
             loaded,
             sources,
+            graph,
         ) {
             Ok(mut child) => {
+                graph.add_edge(ModuleImport {
+                    from: ModuleId::from_canonical_path(canonical.clone()),
+                    to: ModuleId::from_canonical_path(child_canonical),
+                    alias: alias.to_owned(),
+                    span: import.span,
+                });
                 import_namespaces.insert(alias.to_owned(), child.namespace.clone());
                 imported_items.append(&mut child.items);
             }
@@ -176,15 +209,18 @@ fn parse_file(
     path: &Path,
     source: &str,
     sources: &mut SourceManager,
-) -> Result<Module, Vec<Diagnostic>> {
+) -> Result<(Module, SourceId), Vec<Diagnostic>> {
     let source_file = SourceFile::new(path.display().to_string(), source);
-    sources.insert(source_file.clone());
+    let source_id = sources.insert(source_file.clone());
     let lexed = Lexer::new(&source_file).lex();
     let mut diagnostics = lexed.diagnostics;
     let parsed = Parser::new(&source_file, lexed.tokens).parse_module();
     diagnostics.extend(parsed.diagnostics);
     if diagnostics.is_empty() {
-        Ok(parsed.module.unwrap_or(Module { items: Vec::new() }))
+        Ok((
+            parsed.module.unwrap_or(Module { items: Vec::new() }),
+            source_id,
+        ))
     } else {
         Err(diagnostics)
     }
