@@ -1,0 +1,2 @@
+outcome=compile_fail
+diagnostics=TP-E0001

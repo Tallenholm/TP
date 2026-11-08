@@ -381,11 +381,11 @@ fn conformance_case_discovery_is_sorted() {
 }
 
 #[test]
-fn seed_conformance_cases_match_expectations() {
+fn all_conformance_cases_match_expectations() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
-        .join("tests/conformance/harness");
-    let cases = discover_cases(&root).expect("discover seed conformance cases");
+        .join("tests/conformance");
+    let cases = discover_cases(&root).expect("discover conformance cases");
     for case in cases {
         run_case(&case).unwrap_or_else(|error| {
             panic!("{}: {error}", case.display());

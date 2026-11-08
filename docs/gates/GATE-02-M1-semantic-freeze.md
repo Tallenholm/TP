@@ -13,8 +13,8 @@
 
 | ID | Requirement | Status | Evidence / blocker |
 |---|---|---|---|
-| G2-R01 | Freeze lexical grammar and tokenization semantics | FAIL | Active work not yet completed. |
-| G2-R02 | Freeze operator precedence and associativity | FAIL | Active work not yet completed. |
+| G2-R01 | Freeze lexical grammar and tokenization semantics | VERIFYING | Corpus cases and `docs/M1_LEXICAL_AND_SYNTAX_SEMANTICS.md` added; awaiting CI confirmation. |
+| G2-R02 | Freeze operator precedence and associativity | VERIFYING | Observable precedence/associativity cases added; awaiting CI confirmation. |
 | G2-R03 | Freeze literals, integer overflow/traps, and floating-point semantics | FAIL | Existing Gate 1 numeric documentation is input; independent conformance cases still required. |
 | G2-R04 | Freeze equality, strings, and Unicode semantics | FAIL | Active work not yet completed. |
 | G2-R05 | Freeze scopes, shadowing, bindings, and mutability | FAIL | Active work not yet completed. |
@@ -24,8 +24,8 @@
 | G2-R09 | Freeze pattern matching and exhaustiveness semantics | FAIL | Active work not yet completed. |
 | G2-R10 | Freeze module/import/alias/canonical-identity semantics | FAIL | `docs/M1_MODULE_SEMANTICS.md` is input; independent conformance cases still required. |
 | G2-R11 | Freeze executable entry point and runtime trap model | FAIL | Active work not yet completed. |
-| G2-R12 | Create implementation-independent `tests/conformance/` corpus organized by language feature | FAIL | Corpus does not yet exist. |
-| G2-R13 | Record expected compile result, diagnostics, runtime value/output for every applicable conformance case | FAIL | Corpus schema/manifest not yet defined. |
+| G2-R12 | Create implementation-independent `tests/conformance/` corpus organized by language feature | FAIL | Harness foundation exists; full feature corpus is still being built. |
+| G2-R13 | Record expected compile result, diagnostics, runtime value/output for every applicable conformance case | FAIL | Corpus metadata format is defined and validated; feature coverage is incomplete. |
 | G2-R14 | Achieve 100% conformance pass on pinned Rust 1.85.0 with locked dependencies | FAIL | Requires completed corpus and fresh CI. |
 | G2-R15 | Resolve every M1 semantic ambiguity and keep zero unresolved Critical/Major findings | FAIL | Gate 2 semantic review has not yet completed. |
 | G2-R16 | Audit README/examples/spec-facing docs against frozen M1 behavior | FAIL | Final documentation audit pending. |
@@ -45,7 +45,7 @@ For any behavior changed during Gate 2, retain RED → GREEN evidence. Pure free
 
 | ID | Test / conformance case | RED evidence | GREEN evidence | Commit |
 |---|---|---|---|---|
-| — | — | — | — | — |
+| G2-T01 | Conformance harness parser/discovery + seed cases | CI 42437796541: compile failed because `parse_expectation_str`, `discover_cases`, and `run_case` did not exist | CI 42437909426: pinned/locked full workflow PASS | `2373079344e8804f0178ca83bdd3218d27d13d3e` + formatting `711b2b7deef1182f3588832ac3e23ffb6601e6ec` |
 
 ## 4. Verification Commands
 
@@ -61,13 +61,13 @@ The final run must also execute the complete independent M1 conformance corpus a
 
 ## 5. CI Evidence
 
-No Gate 2 closure CI has been recorded yet.
+Harness foundation passed pinned/locked CI **42437909426** on Rust 1.85.0. Gate 2 feature-freeze CI evidence will be appended as each semantic slice closes.
 
 ## 6. Conformance Evidence
 
 **Required location:** `tests/conformance/`  
-**Cases passed:** 0 / pending  
-**Cases failed:** pending  
+**Cases passed:** harness seed 4; feature corpus in progress  
+**Cases failed:** none retained; any mismatch becomes a semantic decision/finding  
 **Known exclusions:** none accepted unless explicitly justified in this report.
 
 Each conformance case must be implementation-independent and record source input plus expected compile result and, where applicable, stable diagnostic family/code, runtime value, and stdout.
