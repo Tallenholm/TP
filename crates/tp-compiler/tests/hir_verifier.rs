@@ -42,10 +42,9 @@ fn rejects_unbound_local_reference() {
     hir.functions[0].body.statements.remove(0);
     let errors = HirVerifier::verify(&hir).expect_err("missing binding must fail");
     assert!(
-        errors.iter().any(|error| matches!(
-            error.kind,
-            HirVerificationKind::UnboundLocal { .. }
-        )),
+        errors
+            .iter()
+            .any(|error| matches!(error.kind, HirVerificationKind::UnboundLocal { .. })),
         "{errors:#?}"
     );
 }
@@ -115,10 +114,9 @@ fn rejects_reversed_function_source_span() {
     span.start = span.end + 1;
     let errors = HirVerifier::verify(&hir).expect_err("invalid span must fail");
     assert!(
-        errors.iter().any(|error| matches!(
-            error.kind,
-            HirVerificationKind::InvalidSpan { .. }
-        )),
+        errors
+            .iter()
+            .any(|error| matches!(error.kind, HirVerificationKind::InvalidSpan { .. })),
         "{errors:#?}"
     );
 }
@@ -131,7 +129,10 @@ fn rejects_assignment_to_immutable_local() {
             "fn main() -> i64 { let x = 1; var y = 2; y = 3; x }",
         )
         .expect("valid M1 source must lower");
-    let HirStmt::Let { symbol: immutable, .. } = &hir.functions[0].body.statements[0] else {
+    let HirStmt::Let {
+        symbol: immutable, ..
+    } = &hir.functions[0].body.statements[0]
+    else {
         panic!("expected let");
     };
     let immutable = *immutable;
@@ -172,10 +173,9 @@ fn rejects_match_arm_binding_escaping_its_arm() {
     args[0].kind = HirPatternKind::Wildcard;
     let errors = HirVerifier::verify(&hir).expect_err("orphaned arm body binding must fail");
     assert!(
-        errors.iter().any(|error| matches!(
-            error.kind,
-            HirVerificationKind::UnboundLocal { .. }
-        )),
+        errors
+            .iter()
+            .any(|error| matches!(error.kind, HirVerificationKind::UnboundLocal { .. })),
         "{errors:#?}"
     );
 }
