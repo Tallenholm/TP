@@ -37,7 +37,7 @@ Every ambiguity discovered during Gate 2 must be recorded here until explicitly 
 
 | ID | Severity | Surface | Question / ambiguity | Decision | Evidence | Status |
 |---|---|---|---|---|---|---|
-| — | — | — | No Gate 2 ambiguity has been triaged yet. | — | — | — |
+| G2-D01 | Major | Equality | Should M1 freeze the interpreter's broad Rust-derived structural/function equality for all compatible values? | **No.** M1 equality is defined only for `Unit`, `Bool`, matching numeric primitives, and `String`. Nominal struct/enum values and function values are not equality-comparable in M1; richer equality is deferred to a deliberate later design. | Gate 2 equality conformance RED pending. | ACTIVE |
 
 ## 3. Test-Driven Evidence
 
