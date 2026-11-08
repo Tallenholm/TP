@@ -1,1 +1,1 @@
-fn main() { print("a\\nb\\t\\\"c\\\\d"); }
+fn main() { print("a\nb\t\"c\\d"); }
