@@ -1,5 +1,6 @@
 use tp_compiler::{
-    Compiler, HirExprKind, HirPatternKind, HirStmt, HirVerificationKind, HirVerifier, Type,
+    Compiler, HirExprKind, HirPatternKind, HirStmt, HirVerificationKind, HirVerifier, SourceFile,
+    Type,
 };
 
 fn valid() -> tp_compiler::HirModule {
@@ -179,6 +180,79 @@ fn rejects_match_arm_binding_escaping_its_arm() {
         errors
             .iter()
             .any(|error| matches!(error.kind, HirVerificationKind::UnboundLocal { .. })),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn verified_hir_spans_resolve_to_snapshot_sources() {
+    let query = Compiler::new()
+        .analyze_source("main.tp", "fn main() -> i64 { 42 }")
+        .expect("valid source");
+    assert!(HirVerifier::verify_with_sources(query.hir(), query.sources()).is_ok());
+}
+
+#[test]
+fn rejects_span_referencing_a_different_source_manager() {
+    let query = Compiler::new()
+        .analyze_source("main.tp", "fn main() -> i64 { 42 }")
+        .expect("valid source");
+    let mut hir = query.hir().clone();
+    let foreign = SourceFile::new("foreign.tp", "fn main() {}");
+    hir.functions[0].span.source = foreign.id();
+    let errors = HirVerifier::verify_with_sources(&hir, query.sources())
+        .expect_err("foreign SourceId must not be accepted");
+    assert!(
+        errors.iter().any(|error| matches!(
+            error.kind,
+            HirVerificationKind::UnknownSource { .. }
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_source_span_past_file_boundary() {
+    let query = Compiler::new()
+        .analyze_source("main.tp", "fn main() -> i64 { 42 }")
+        .expect("valid source");
+    let mut hir = query.hir().clone();
+    hir.functions[0].span.end = query
+        .sources()
+        .iter()
+        .next()
+        .expect("main source")
+        .text()
+        .len()
+        + 1;
+    let errors = HirVerifier::verify_with_sources(&hir, query.sources())
+        .expect_err("span past EOF must be rejected");
+    assert!(
+        errors.iter().any(|error| matches!(
+            error.kind,
+            HirVerificationKind::InvalidSourceBoundary { .. }
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_span_inside_utf8_character() {
+    let query = Compiler::new()
+        .analyze_source("main.tp", "fn main() -> String { \"é\" }")
+        .expect("valid Unicode source");
+    let mut hir = query.hir().clone();
+    let HirStmt::Expr { expr, .. } = &mut hir.functions[0].body.statements[0] else {
+        panic!("expected string expression");
+    };
+    expr.span.start += 2;
+    let errors = HirVerifier::verify_with_sources(&hir, query.sources())
+        .expect_err("non-character-aligned UTF-8 span must be rejected");
+    assert!(
+        errors.iter().any(|error| matches!(
+            error.kind,
+            HirVerificationKind::InvalidSourceBoundary { .. }
+        )),
         "{errors:#?}"
     );
 }
