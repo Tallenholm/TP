@@ -268,6 +268,7 @@ fn mir_verification_diagnostics(errors: Vec<crate::MirVerificationError>) -> Vec
                     error.function, error.kind
                 ),
             )
+            .with_primary(error.span)
         })
         .collect()
 }
@@ -283,6 +284,7 @@ fn hir_verification_diagnostics(errors: Vec<crate::HirVerificationError>) -> Vec
                     error.function, error.kind
                 ),
             )
+            .with_primary(error.span)
         })
         .collect()
 }

@@ -2,12 +2,13 @@ use std::{collections::HashSet, fmt};
 
 use crate::{
     BlockId, Constant, LocalId, MirFunction, MirModule, MirPattern, MirStatement, Operand, Rvalue,
-    Terminator, Type,
+    Span, Terminator, Type,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MirVerificationError {
     pub function: String,
+    pub span: Span,
     pub kind: MirVerificationKind,
 }
 
@@ -415,6 +416,7 @@ impl MirVerifier {
     ) {
         errors.push(MirVerificationError {
             function: function.name.clone(),
+            span: function.span,
             kind,
         });
     }
