@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     HirBlock, HirExpr, HirExprKind, HirFunction, HirModule, HirPattern, HirPatternKind, HirStmt,
-    Span, SymbolId, Type,
+    SourceId, SourceManager, Span, SymbolId, Type,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -20,6 +20,14 @@ pub enum HirVerificationKind {
     InvalidSpan {
         start: usize,
         end: usize,
+    },
+    UnknownSource {
+        source: SourceId,
+    },
+    InvalidSourceBoundary {
+        start: usize,
+        end: usize,
+        source_len: usize,
     },
     DuplicateSymbol {
         symbol: SymbolId,
@@ -50,6 +58,17 @@ impl fmt::Display for HirVerificationKind {
             Self::InvalidSpan { start, end } => {
                 write!(f, "reversed source span {start}..{end}")
             }
+            Self::UnknownSource { source } => {
+                write!(f, "span refers to unknown source {}", source.raw())
+            }
+            Self::InvalidSourceBoundary {
+                start,
+                end,
+                source_len,
+            } => write!(
+                f,
+                "span {start}..{end} lies outside UTF-8 source boundaries (length {source_len})"
+            ),
             Self::DuplicateSymbol { symbol } => {
                 write!(f, "symbol {} is declared more than once", symbol.raw())
             }
@@ -84,8 +103,9 @@ struct Binding {
     mutable: bool,
 }
 
-struct FunctionVerifier {
+struct FunctionVerifier<'a> {
     function: String,
+    sources: Option<&'a SourceManager>,
     errors: Vec<HirVerificationError>,
     seen: HashSet<SymbolId>,
     visible: HashMap<SymbolId, Binding>,
@@ -96,10 +116,24 @@ pub struct HirVerifier;
 
 impl HirVerifier {
     pub fn verify(module: &HirModule) -> Result<(), Vec<HirVerificationError>> {
+        Self::verify_inner(module, None)
+    }
+
+    pub fn verify_with_sources(
+        module: &HirModule,
+        sources: &SourceManager,
+    ) -> Result<(), Vec<HirVerificationError>> {
+        Self::verify_inner(module, Some(sources))
+    }
+
+    fn verify_inner(
+        module: &HirModule,
+        sources: Option<&SourceManager>,
+    ) -> Result<(), Vec<HirVerificationError>> {
         let mut errors = Vec::new();
 
         for function in &module.functions {
-            let mut verifier = FunctionVerifier::new(&function.name);
+            let mut verifier = FunctionVerifier::new(&function.name, sources);
             verifier.verify_function(function);
             errors.extend(verifier.errors);
         }
@@ -112,10 +146,11 @@ impl HirVerifier {
     }
 }
 
-impl FunctionVerifier {
-    fn new(name: &str) -> Self {
+impl<'a> FunctionVerifier<'a> {
+    fn new(name: &str, sources: Option<&'a SourceManager>) -> Self {
         Self {
             function: name.to_owned(),
+            sources,
             errors: Vec::new(),
             seen: HashSet::new(),
             visible: HashMap::new(),
@@ -138,6 +173,35 @@ impl FunctionVerifier {
                 HirVerificationKind::InvalidSpan {
                     start: span.start,
                     end: span.end,
+                },
+            );
+        }
+
+        let Some(sources) = self.sources else {
+            return;
+        };
+        let Some(source) = sources.get(span.source) else {
+            self.error(
+                span,
+                HirVerificationKind::UnknownSource {
+                    source: span.source,
+                },
+            );
+            return;
+        };
+        let text = source.text();
+        let source_len = text.len();
+        if span.start > source_len
+            || span.end > source_len
+            || !text.is_char_boundary(span.start)
+            || !text.is_char_boundary(span.end)
+        {
+            self.error(
+                span,
+                HirVerificationKind::InvalidSourceBoundary {
+                    start: span.start,
+                    end: span.end,
+                    source_len,
                 },
             );
         }

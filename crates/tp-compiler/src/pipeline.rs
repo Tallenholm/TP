@@ -42,7 +42,8 @@ impl Compiler {
 
     fn verified_hir(checked: &CheckedModule) -> Result<HirModule, Vec<Diagnostic>> {
         let hir = HirLowerer::lower(&checked.module, &checked.semantic);
-        HirVerifier::verify(&hir).map_err(hir_verification_diagnostics)?;
+        HirVerifier::verify_with_sources(&hir, &checked.sources)
+            .map_err(hir_verification_diagnostics)?;
         Ok(hir)
     }
 
