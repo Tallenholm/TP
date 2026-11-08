@@ -1,2 +1,2 @@
 enum Maybe<T> { Some(T), None }
-fn f(x: Maybe<i64>) -> i64 { match x { Some(v) => { v = 2; v }, None => 0 } }
+fn f(x: Maybe<i64>) -> i64 { match x { Some(v) => v = 2, None => 0 } }
