@@ -156,7 +156,10 @@ impl fmt::Display for HirVerificationKind {
                 )
             }
             Self::FunctionSemanticMismatch { expected, actual } => {
-                write!(f, "HIR function result {actual} differs from checked {expected:?}")
+                write!(
+                    f,
+                    "HIR function result {actual} differs from checked {expected:?}"
+                )
             }
             Self::ParameterSemanticMismatch {
                 expected,
