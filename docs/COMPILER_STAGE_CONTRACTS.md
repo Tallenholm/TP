@@ -14,9 +14,9 @@
 | ModuleLoader / name resolution | Canonical module graph and imports | file graph + AST → resolved module/diagnostics | Duplicate source modules under equivalent aliases |
 | TypeChecker | Binding, expression types, semantic decisions | resolved AST → SemanticModel + diagnostics | Leak unresolved type information downstream |
 | HirLowerer | Deterministic lowering from checked semantics | AST + SemanticModel → typed HIR | Re-infer values/types or bypass rejected source code |
-| HIR verifier (planned) | HIR structural/types/bindings contracts | HIR → verified HIR or typed error | Accept mismatched symbols or panic on malformed IR |
+| HIR verifier (implemented, incomplete proof) | HIR structural/types/bindings contracts | HIR → verified HIR or typed error | Accept mismatched symbols or panic on malformed IR |
 | MirLowerer | CFG/local lowering, left-to-right value capture | verified HIR → MIR | Change evaluation order or implicit runtime behavior |
-| MIR verifier (planned) | CFG/local indexing and use integrity | MIR → verified MIR or typed error | Silently normalize malformed IR or execute it |
+| MIR verifier (implemented, incomplete proof) | CFG/local indexing and use integrity | MIR → verified MIR or typed error | Silently normalize malformed IR or execute it |
 | Interpreter | M1 run-time behavior and defined traps | verified MIR → value/stdout or runtime trap | Read outside verified local/block tables or re-typecheck |
 
 As of 2026-11-08, `Compiler::lower_source`/`lower_path` call `HirVerifier`, and `Compiler::lower_mir_source`/`lower_mir_path` call `MirVerifier`. Both check internal IR before returning it to callers. The public interpreter also runs `MirVerifier` at `run_main` time even when constructed from externally fabricated MIR; invalid modules fail with code `TP-E0600`, as proved by [CI 42504027480](https://github.com/Tallenholm/TP/actions/runs/42504027480). This does **not** prove every type/definite-assignment invariant.
@@ -30,12 +30,16 @@ The Gate 2 conformance oracle (144 cases) controls all observable behavior. In p
 - A function's parameter symbols and all let/pattern binding SymbolIds must be unique within that function (shadowing still receives a fresh SymbolId).
 - Lexical scopes are tracked across nested blocks and distinct match arms. No local use/assignment may refer to a not-yet-declared or out-of-scope SymbolId.
 - HIR literal types must match their primitive kind; local use type metadata must match the resolved binding. `if`/`while` conditions require `Bool` or `Never` (unreachable conditions are allowed by frozen M1).
-- Assignment to an immutable symbol is invalid IR. A source span with `start > end` is invalid IR; there is not yet a complete check against the source's byte length.
+- Assignment to an immutable symbol is invalid IR. A source span with `start > end`, an unknown SourceId, an offset beyond its loaded source, or an offset inside a UTF-8 codepoint is invalid IR.
 - **Critical provenance rule:** `HirStmt::Let.ty` must originate from the type checker's `SemanticModel`, **not** `value.ty`. An explicit `let x: Maybe<i64> = None;` is valid even though the uncontextualized generic `None` initializer carries a less-specific type. MIR local metadata must use the authoritative HIR `ty`.
 - Scope and primitive-shape verification is not a second source type checker; richer HIR type rules remain Gate 3 work.
 - Typed `HirVerificationError/HirVerificationKind` map to external diagnostic `TP-E0601` on the public Compiler API when invalid lowered HIR is encountered.
 
-**Evidence:** intended RED CI [42503096400](https://github.com/Tallenholm/TP/actions/runs/42503096400), annotation-provenance regression exposed by [42503348927](https://github.com/Tallenholm/TP/actions/runs/42503348927), and GREEN CI [42503647514](https://github.com/Tallenholm/TP/actions/runs/42503647514): 9/9 HIR tests and frozen 144-case M1 corpus.
+**Extended evidence:** RED [42503096400](https://github.com/Tallenholm/TP/actions/runs/42503096400) plus annotated-generic regression [42503348927](https://github.com/Tallenholm/TP/actions/runs/42503348927); source-boundary GREEN [42505287570](https://github.com/Tallenholm/TP/actions/runs/42505287570); source/semantic provenance GREEN [42506018205](https://github.com/Tallenholm/TP/actions/runs/42506018205). All 23 dedicated HIR tests and frozen M1 conformance remain GREEN on [42506366279](https://github.com/Tallenholm/TP/actions/runs/42506366279).
+
+### Authority of checked semantic data
+
+`HirVerifier::verify_checked` compares HIR expressions, blocks, Let/parameter/pattern bindings, function results, global kinds and local/assignment symbol resolution directly to the original checked `SemanticModel`, including identity rather than merely matching types. It must not derive a competing language type model. Changing source/semantic provenance without a reviewed decision and RED → GREEN tests is forbidden.
 
 ## MIR-specific structural invariants — initial G3-T02 contract
 
@@ -51,6 +55,8 @@ For every `MirFunction`:
 6. Every statement assignment target and local operand referenced by Rvalues/Terminators/Match pattern bindings must exist.
 7. Verification is pure, deterministic and reports typed errors; it must not panic on malformed IR or try to fix input.
 8. Integration: both `Compiler::lower_mir_source` and `Compiler::lower_mir_path` must reject invalid MIR as compile failures before it is given to the interpreter.
+
+Additional MIR invariants now verified: function names are unique; `Rvalue::Function` targets must exist (or be bootstrap `print`); `Branch` operands are Bool/Never; primitive return operand types must match primitive function return types. This deliberately does not guess generic/nominal return compatibility or prove definite assignment. Public `Interpreter::run_main` re-verifies raw MIR. All 20 dedicated MIR tests and M1 conformance passed CI [42506366279](https://github.com/Tallenholm/TP/actions/runs/42506366279).
 
 A `Terminator::Unreachable` may be a legitimate lowering artifact in unreachable generated blocks; it is not rejected solely because the variant exists. Stronger reachable-path and type invariants will be evaluated in subsequent Gate 3 tasks, not guessed here.
 
@@ -70,3 +76,11 @@ Those decisions are deliberately not resolved by the initial MIR verifier contra
 ## Test evidence
 
 The Gate 3 plan requires an actual RED → GREEN test cycle before coding the MIR verifier. `crates/tp-compiler/tests/mir_verifier.rs` first introduces compile-failing tests for the missing public verifier API; after that failure is observed on CI, the minimal verified implementation may be added. Subsequent negative tests ensure broken CFG/indexing is rejected.
+
+## Canonical module graph and query snapshot boundary
+
+`ModuleLoader::load_with_sources` creates a canonical `ModuleGraph` with one `ModuleNode` per canonical filesystem path, a session-scoped `SourceId` per loaded source, and import edges recording alias, originating span and canonical destination. Nodes and edges are sorted deterministically before exposure. Aliased imports and diamonds share one canonical module ID; cycles remain compile errors.
+
+`Compiler::analyze_source` / `analyze_path` create a **new, noncached** `CompilationSnapshot` containing one coherent `SourceManager`, checked AST, `SemanticModel`, verified HIR and verified MIR; file-backed snapshots also expose `module_graph()`. All values are read-only views. `SourceId` is never promised stable across snapshots; `ModuleId` is canonical-path based within the same filesystem, and `SymbolId` must be qualified by function/snapshot identity.
+
+The six query tests and 144-case M1 oracle passed [42506366279](https://github.com/Tallenholm/TP/actions/runs/42506366279). See `docs/decisions/ADR-0003-gate3-identity-and-query-scope.md` for exactly scoped and deferred promises.

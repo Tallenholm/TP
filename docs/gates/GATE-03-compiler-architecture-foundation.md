@@ -3,7 +3,7 @@
 **Gate:** 03 — Compiler Architecture Foundation  
 **State:** ACTIVE  
 **Specification revision:** `docs/superpowers/specs/2026-08-12-universal-language-design.md` and `docs/MASTER_GATED_DEVELOPMENT_PLAN.md`  
-**Implementation PR:** Gate 3 draft PR (created after this initial commit)  
+**Implementation PR:** [#2 — Gate 3 architecture (draft)](https://github.com/Tallenholm/TP/pull/2)  
 **Stable baseline:** `e4ba609b060dbf824bf4dba3455b47b7cb4b671a`  
 **Report date:** 2026-11-08
 
@@ -13,17 +13,17 @@
 
 | ID | Requirement | Status | Evidence / required closure |
 |---|---|---|---|
-| G3-R01 | Explicit invariant contracts between compiler stages | IN PROGRESS | Initial `docs/COMPILER_STAGE_CONTRACTS.md` written and MIR index-based runtime invariants reviewed; remaining stage contracts and design decisions require review. |
-| G3-R02 | One centralized authoritative semantic context | IN PROGRESS | Checked binding `ty` now preserved from `SemanticModel` in HIR `Let` and MIR locals; original valid annotated-generic conformance case exposed and repaired duplication. Full provenance audit pending. |
-| G3-R03 | Stable symbol identities with scoped lifetime policy | PENDING | Multi-module/namespace regression tests |
-| G3-R04 | Authoritative canonical module graph | PENDING | Diamond/alias/cycle/source-ID tests |
-| G3-R05 | Source management and cross-file identity invariants | PENDING | Source/location tests |
-| G3-R06 | Compiler query API contracts | PENDING | Query determinism and mutation tests |
-| G3-R07 | Typed structured internal and user diagnostics | PENDING | Stable codes and panic-free invalid input tests |
-| G3-R08 | HIR verifier | IN PROGRESS | `HirVerifier` with typed `HirVerificationKind` and `TP-E0601` pipeline diagnostics; 9/9 adversarial HIR cases and M1 frozen suite PASS CI [42503647514](https://github.com/Tallenholm/TP/actions/runs/42503647514). Additional nested semantic and source provenance checks pending. |
-| G3-R09 | MIR verifier and guarded execution | IN PROGRESS | `MirVerifier` and `TP-E0600` integration added. 13/13 dedicated verifier tests PASS on exact-head CI [42499410650](https://github.com/Tallenholm/TP/actions/runs/42499410650); full structural-verifier hardening and architecture review still in progress. |
-| G3-R10 | Negative/adversarial malformed-IR corpus | IN PROGRESS | 15/15 MIR (including two public-interpreter boundary tests) and 9/9 HIR cases PASS on [42504027480](https://github.com/Tallenholm/TP/actions/runs/42504027480); prior stage-specific runs [42499410650](https://github.com/Tallenholm/TP/actions/runs/42499410650) and [42503647514](https://github.com/Tallenholm/TP/actions/runs/42503647514). Broader property/graph coverage remains. |
-| G3-R11 | Full regression / conformance / CI / final architecture review | PENDING | Rust 1.85.0 pinned/locked verification, 144/144 M1 cases, final diff audit |
+| G3-R01 | Explicit invariant contracts between compiler stages | IN PROGRESS | `docs/COMPILER_STAGE_CONTRACTS.md` covers source/loader/typechecker/HIR/MIR/interpreter boundaries, verification, identity and query snapshot rules; final whole-branch contract audit pending. |
+| G3-R02 | One centralized authoritative semantic context | IN PROGRESS | Checked binding type flows from `SemanticModel` to HIR/MIR; `HirVerifier::verify_checked` compares expression/block/binding/global/parameter/pattern/local IDs and function returns against original semantics. 23/23 HIR tests passed CI 42506018205. Full semantic provenance audit pending. |
+| G3-R03 | Stable symbol identities with scoped lifetime policy | IN PROGRESS | `SymbolId` unique within each checked function; ID is not globally persistent across compiles. Canonical `ModuleId` path is stable within the same filesystem; scope contract recorded in ADR-0003. Future cross-session rehydration/identity validation pending. |
+| G3-R04 | Authoritative canonical module graph | IN PROGRESS | `ModuleGraph` exposes canonical nodes/import edges via file-backed snapshot. Diamond/alias identities green on CI 42505002345; existing symlink/cycle tests green. Further adversarial graph and identity tests pending. |
+| G3-R05 | Source management and cross-file identity invariants | IN PROGRESS | HIR verifier rejects foreign SourceIds, spans beyond EOF and invalid UTF-8 boundaries; 13/13 HIR tests green CI 42505287570. SourceId remains process-allocated/ephemeral; complete replay policy pending. |
+| G3-R06 | Compiler query API contracts | IN PROGRESS | Noncached `CompilationSnapshot` exposes SourceManager, AST, checked semantic model, verified HIR/MIR, optional canonical ModuleGraph; six query tests green CI 42505002345. Incremental caching/invalidation deliberately deferred in ADR-0003. |
+| G3-R07 | Typed structured internal and user diagnostics | IN PROGRESS | Typed HIR/MIR error enums and stable `TP-E0601` / `TP-E0600` outward codes. Internal source-span-to-primary-diagnostic mapping and complete machine-structured provenance remain open. |
+| G3-R08 | HIR verifier | IN PROGRESS | Scoped symbols, checked expression/block/function/parameter/global/pattern/local metadata and source UTF-8 provenance verified. 23/23 dedicated tests passed pinned Rust 1.85 CI 42506018205 and 42506366279; deeper type/flow completeness pending. |
+| G3-R09 | MIR verifier and guarded execution | IN PROGRESS | MIR index/CFG/local/parameter/callable structural checks and primitive branch/return type checks; public `Interpreter::run_main` validates MIR. 20/20 dedicated tests passed CI 42506366279. Full definite-assignment/type proof pending. |
+| G3-R10 | Negative/adversarial malformed-IR corpus | IN PROGRESS | 23 HIR + 20 MIR malformed/positive verifier tests and six query tests pass CI 42506366279, alongside frozen 144-case M1 oracle. More graph/property/fuzz/IR-dominance tests required. |
+| G3-R11 | Full regression / conformance / CI / final architecture review | IN PROGRESS | Exact-head pinned/locked Rust CI 42506366279 PASS (fmt, Clippy, workspace, 144 M1 conformance, Hello/Fibonacci). Final review, fuzz/property budget and Gate 3 approval still pending. |
 
 ## 2. Test-Driven Evidence
 
@@ -47,6 +47,19 @@
 - RED: [CI 42503940577](https://github.com/Tallenholm/TP/actions/runs/42503940577) on `fbac4aade080ecfcf98f719edad7b09eceb58fa6`, formatter/Clippy PASS but both hand-built malformed MIR direct `Interpreter::new(&mir).run_main()` tests failed because execution silently accepted wrong block/local metadata.
 - GREEN: [CI 42504027480](https://github.com/Tallenholm/TP/actions/runs/42504027480) on `d2f465d51fd9ce0d0fd80b9f8c0265f5a4faa997`, all 15 MIR tests PASS; public interpreter `run_main` now runs `MirVerifier` and returns typed `RuntimeError` code `TP-E0600` for structurally invalid external MIR. Full locked workspace, frozen M1 corpus, Rust fmt, strict Clippy and Hello/Fibonacci PASS.
 
+### Additional Gate 3 RED → GREEN verification (2026-11-08)
+
+| Change | RED evidence | GREEN evidence |
+|---|---|---|
+| Single-pass checked source/path snapshots and stale-source isolation | [42504389383](https://github.com/Tallenholm/TP/actions/runs/42504389383) — no `analyze_source/path` methods (fmt PASS) | [42504573620](https://github.com/Tallenholm/TP/actions/runs/42504573620) — four query tests, M1/workspace/smokes PASS |
+| Canonical module graph with diamond and alias identity | [42504819970](https://github.com/Tallenholm/TP/actions/runs/42504819970) — `CompilationSnapshot::module_graph` absent (fmt PASS) | [42505002345](https://github.com/Tallenholm/TP/actions/runs/42505002345) — six query tests, canonical diamond/aliases PASS |
+| Source-aware HIR UTF-8 spans | [42505182879](https://github.com/Tallenholm/TP/actions/runs/42505182879) — no `verify_with_sources`/boundary error variants (fmt PASS) | [42505287570](https://github.com/Tallenholm/TP/actions/runs/42505287570) — 13 HIR tests, M1/workspace/smokes PASS |
+| Authoritative semantic HIR metadata: expression/block/binding/global | [42505533281](https://github.com/Tallenholm/TP/actions/runs/42505533281) — no `verify_checked`/semantic variants (fmt PASS) | [42505775012](https://github.com/Tallenholm/TP/actions/runs/42505775012) — 18 HIR tests, M1/workspace/smokes PASS |
+| Function/parameter/pattern/local symbol semantic provenance | [42505895761](https://github.com/Tallenholm/TP/actions/runs/42505895761) — no signature/pattern/local variants (fmt PASS) | [42506018205](https://github.com/Tallenholm/TP/actions/runs/42506018205) — 23 HIR tests, frozen M1 all green |
+| MIR duplicate callables, unknown functions, primitive branches and returns | [42506212013](https://github.com/Tallenholm/TP/actions/runs/42506212013) — absent MIR error variants (fmt PASS) | [42506366279](https://github.com/Tallenholm/TP/actions/runs/42506366279) — 20 MIR + 23 HIR + six query tests, full frozen M1 suite/format/Clippy/smokes PASS |
+
+The intermediate formatting-only failures do **not** count as successful RED demonstrations. Final whole-branch security/architecture review is not complete.
+
 ## 3. Verification Commands
 
 ```bash
@@ -55,7 +68,7 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 ```
 
-These are required for each completed code increment and at exit. Gate 3 work will also run verifier-negative cases, the full 144-case M1 conformance corpus, and Hello/Fibonacci smoke tests. Initial Gate 3 T02 verification PASS on exact head `5ff892d963a0b602e8f88d86ff3b45e132c577b3` via CI 42499191663, including 7/7 verifier tests and full frozen M1 regression. Expanded 15-case MIR suite (including raw interpreter safeguards) and 9-case HIR suite both pass, together with the complete frozen M1 regression on exact-head CI 42504027480. Final full Gate 3 exit verification is not yet claimed.
+These are required for each completed code increment and at exit. Gate 3 work will also run verifier-negative cases, the full 144-case M1 conformance corpus, and Hello/Fibonacci smoke tests. Initial Gate 3 T02 verification PASS on exact head `5ff892d963a0b602e8f88d86ff3b45e132c577b3` via CI 42499191663, including 7/7 verifier tests and full frozen M1 regression. Current independently verified implementation head `7f5c654ccb50457af26b7d2958facf943f1d5461` passed exact-head CI **42506366279**: 20/20 MIR, 23/23 HIR, six query tests, all frozen 144 M1 conformance cases, workspace, formatter, Clippy and Hello/Fibonacci. This evidence-closure commit must also pass fresh CI before a completion claim. Final Gate 3 exit verification has **not** been claimed. Final full Gate 3 exit verification is not yet claimed.
 
 ## 4. CI Evidence
 
@@ -72,10 +85,12 @@ These are required for each completed code increment and at exit. Gate 3 work wi
 | [G3 direct-interpreter RED 42503940577](https://github.com/Tallenholm/TP/actions/runs/42503940577) | `fbac4aa` | RED (expected) | Raw Interpreter accepted invalid block/local metadata |
 | [G3 direct-interpreter GREEN 42504027480](https://github.com/Tallenholm/TP/actions/runs/42504027480) | `d2f465d` | PASS | 15/15 MIR, 9/9 HIR, frozen corpus, full Rust fmt/Clippy/workspace/smokes |
 
+| [Gate 3 latest feature CI 42506366279](https://github.com/Tallenholm/TP/actions/runs/42506366279) | `7f5c654` | PASS | 20 MIR, 23 HIR, six query, 144 M1 conformance, fmt/lint/workspace/smokes |
+
 ## 5. Conformance Evidence
 
-**Gate 3 cases passed:** 15/15 MIR (including direct interpreter) + 9/9 HIR on CI 42504027480.  
-**Gate 3 cases failed:** none on the verified head `d2f465d51fd9ce0d0fd80b9f8c0265f5a4faa997`.  
+**Gate 3 cases passed:** 20/20 MIR + 23/23 HIR and six query tests on CI 42506366279.  
+**Gate 3 cases failed:** none on verified implementation head `7f5c654ccb50457af26b7d2958facf943f1d5461`.  
 **Frozen baseline:** M1 Gate 2 144/144 PASS.  
 **Exclusions:** none approved.
 
@@ -95,10 +110,10 @@ No new critical finding identified at activation; review incomplete.
 
 ### Major / design decisions
 
-- **G3-D01 OPEN:** identity scope/stability for `ModuleId`, `SymbolId` and source queries.
-- **G3-D02 OPEN:** structured verifier error representation and conversion to diagnostics.
-- **G3-D03 OPEN:** SourceId/session determinism.
-- **G3-D04 OPEN:** query invalidation and caching policy.
+- **G3-D01 RESOLVED for current compiler scope:** canonical path-based `ModuleId`; per-function ephemeral `SymbolId`, never an unqualified persisted ID. ADR-0003 plus HIR/query tests; future persistent identity designs require a new reviewed decision.
+- **G3-D02 PARTIALLY RESOLVED:** typed internal errors mapped to stable `TP-E0600`/`TP-E0601`; attaching HIR source spans to public diagnostic primary labels and complete machine error provenance are still OPEN.
+- **G3-D03 RESOLVED for current scope:** `SourceId` values are process-allocated and only valid within a snapshot's `SourceManager`. Deterministic replay uses file/path identity, not raw IDs; document limitations under ADR-0003.
+- **G3-D04 RESOLVED for current scope:** compiler snapshots are noncached, recreated on each request; incremental cache/invalidation is forbidden pending a separate correctness-first design. Six query tests show no stale source state.
 
 ### Minor
 
@@ -106,7 +121,7 @@ None recorded yet; no final review has occurred.
 
 ## 9. Architecture Review
 
-Current `SemanticModel` already bridges type checking and HIR. G3-T02 adds a dedicated MIR structural verifier and guards both `Compiler::lower_mir_source` and `Compiler::lower_mir_path` before interpreter execution, without introducing a parallel type system. `BlockId` and `LocalId` must match vector indices, because the current interpreter indexes them directly. G3-T03 adds a scoped HIR verifier, checks literal/type metadata and checked symbol resolution, and preserves authoritative checked Let type through MIR. This is not a complete IR type/definite-assignment proof, which remains open.
+Current `SemanticModel` already bridges type checking and HIR. G3-T02 adds a dedicated MIR structural verifier and guards both `Compiler::lower_mir_source` and `Compiler::lower_mir_path` before interpreter execution, without introducing a parallel type system. `BlockId` and `LocalId` must match vector indices, because the current interpreter indexes them directly. G3-T03 adds a scoped HIR verifier, checks literal/type metadata and checked symbol resolution, and preserves authoritative checked Let type through MIR. Further Gate 3 additions check verified HIR metadata against the exact original `SemanticModel` (23 tests total), verify UTF-8 spans against the owned `SourceManager`, expose one-pass typed query snapshots and canonical import graphs, and require direct public interpreter MIR validation. MIR now rejects duplicate function names, unknown callees, non-Bool primitive branch conditions, and invalid primitive return types. These checks are **not** a complete IR type/definite-assignment proof; such work and final adversarial review remain OPEN.
 
 ## 10. Security Review
 
@@ -114,7 +129,7 @@ Malformed internal IR, cross-module identity collisions, source path mismatches 
 
 ## 11. Documentation Audit
 
-Gate 3 implementation plan and `docs/COMPILER_STAGE_CONTRACTS.md` were added, recording the interpreter's index-based MIR invariants and the initial verifier contract. HIR and MIR contracts and the typed diagnostic code mapping are now documented. Further source/module/query contracts and full implementation/doc reconciliation remain pending.
+Gate 3 implementation plan and `docs/COMPILER_STAGE_CONTRACTS.md` were added, recording the interpreter's index-based MIR invariants and the initial verifier contract. HIR and MIR contracts and the typed diagnostic code mapping are now documented. Stage contracts, README active gate notice, verified HIR/MIR, UTF-8 source boundary rules, module/query identity and an identity/cache ADR are reconciled at this milestone. Final complete implementation/doc reconciliation remains pending.
 
 ## 12. Cross-Cutting Language Laws
 
@@ -127,7 +142,7 @@ Gate 2's frozen `docs/M1_KNOWN_LIMITATIONS.md` remains authoritative. Initial MI
 ## 14. Final Decision
 
 **Decision:** FAIL / ACTIVE  
-**Reason:** Gate 3 has been authorized to begin; none of its exit requirements has yet been verified.
+**Reason:** Gate 3 is ACTIVE. Multiple requirements have independently passing test evidence (23 HIR, 20 MIR, six query, 144 M1 cases), but final HIR/MIR type and definite-assignment verification, complete diagnostics, fuzz/property coverage, final architecture/security review and owner authorization for Gate 4 remain outstanding. No merge permitted.
 
 ### Owner authorization
 
