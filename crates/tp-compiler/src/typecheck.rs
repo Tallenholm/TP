@@ -421,7 +421,7 @@ impl TypeChecker {
                 let condition_ty = self.check_expr(condition);
                 self.require_bool(condition.span, &condition_ty, "while condition");
                 self.check_block(body);
-                if condition_ty.is_never() {
+                if condition_ty.is_never() || matches!(&condition.kind, ExprKind::Bool(true)) {
                     Type::Never
                 } else {
                     Type::Unit
