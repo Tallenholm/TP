@@ -54,6 +54,10 @@ pub enum MirVerificationKind {
     UnknownFunctionReference {
         name: String,
     },
+    ReadBeforeAssignment {
+        block: BlockId,
+        local: LocalId,
+    },
 }
 
 impl fmt::Display for MirVerificationKind {
@@ -104,6 +108,11 @@ impl fmt::Display for MirVerificationKind {
             Self::UnknownFunctionReference { name } => {
                 write!(f, "MIR references nonexistent callable `{name}`")
             }
+            Self::ReadBeforeAssignment { block, local } => write!(
+                f,
+                "block {} reads local {} before it is definitely assigned",
+                block.0, local.0
+            ),
         }
     }
 }
@@ -127,6 +136,13 @@ impl MirVerifier {
         }
         for function in &module.functions {
             Self::verify_function(function, &unique, &mut errors);
+        }
+        // Avoid traversing invalid CFG indices or local IDs. The control-flow
+        // proof only runs on structurally verified input.
+        if errors.is_empty() {
+            for function in &module.functions {
+                Self::verify_definite_assignments(function, &mut errors);
+            }
         }
         if errors.is_empty() {
             Ok(())
@@ -406,6 +422,187 @@ impl MirVerifier {
             | MirPattern::Integer(_)
             | MirPattern::Bool(_)
             | MirPattern::String(_) => {}
+        }
+    }
+
+    fn verify_definite_assignments(
+        function: &MirFunction,
+        errors: &mut Vec<MirVerificationError>,
+    ) {
+        if function.blocks.is_empty() {
+            return;
+        }
+
+        let entry = function.entry.0 as usize;
+        let local_count = function.locals.len();
+        let block_count = function.blocks.len();
+        let mut reachable = vec![false; block_count];
+        let mut predecessors: Vec<Vec<(usize, Vec<LocalId>)>> = vec![Vec::new(); block_count];
+        let mut pending = vec![entry];
+
+        // Build the reachable CFG with match-pattern bindings as values
+        // assigned on the successful arm edge, not before the match.
+        while let Some(index) = pending.pop() {
+            if reachable[index] {
+                continue;
+            }
+            reachable[index] = true;
+            for (destination, bindings) in Self::successor_edges(
+                &function.blocks[index].terminator,
+            ) {
+                let target = destination.0 as usize;
+                predecessors[target].push((index, bindings));
+                if !reachable[target] {
+                    pending.push(target);
+                }
+            }
+        }
+
+        // Must-analysis uses intersection at joins. Initialize non-entry
+        // blocks to the top element so loop back-edges converge correctly.
+        let mut incoming = vec![vec![true; local_count]; block_count];
+        incoming[entry].fill(false);
+        for param in &function.params {
+            incoming[entry][param.0 as usize] = true;
+        }
+
+        loop {
+            let mut changed = false;
+            for block_index in 0..block_count {
+                if !reachable[block_index] || block_index == entry {
+                    continue;
+                }
+                let mut current = vec![true; local_count];
+                for (predecessor, bindings) in &predecessors[block_index] {
+                    let mut outgoing = incoming[*predecessor].clone();
+                    for statement in &function.blocks[*predecessor].statements {
+                        let MirStatement::Assign { target, .. } = statement;
+                        outgoing[target.0 as usize] = true;
+                    }
+                    for binding in bindings {
+                        outgoing[binding.0 as usize] = true;
+                    }
+                    for (slot, defined) in current.iter_mut().zip(outgoing) {
+                        *slot &= defined;
+                    }
+                }
+                if current != incoming[block_index] {
+                    incoming[block_index] = current;
+                    changed = true;
+                }
+            }
+            if !changed {
+                break;
+            }
+        }
+
+        // Validate every local use at its actual evaluation point, then mark
+        // assignment targets initialized only after evaluating the RHS.
+        for (index, block) in function.blocks.iter().enumerate() {
+            if !reachable[index] {
+                continue;
+            }
+            let mut defined = incoming[index].clone();
+            for statement in &block.statements {
+                let MirStatement::Assign { target, value } = statement;
+                for operand in Self::rvalue_operands(value) {
+                    Self::check_definite_read(function, block.id, operand, &defined, errors);
+                }
+                defined[target.0 as usize] = true;
+            }
+            for operand in Self::terminator_operands(&block.terminator) {
+                Self::check_definite_read(function, block.id, operand, &defined, errors);
+            }
+        }
+    }
+
+    fn successor_edges(terminator: &Terminator) -> Vec<(BlockId, Vec<LocalId>)> {
+        match terminator {
+            Terminator::Goto(target) => vec![(*target, Vec::new())],
+            Terminator::Branch {
+                then_block,
+                else_block,
+                ..
+            } => vec![(*then_block, Vec::new()), (*else_block, Vec::new())],
+            Terminator::Match {
+                arms, otherwise, ..
+            } => {
+                let mut edges = Vec::with_capacity(arms.len() + 1);
+                for (pattern, target) in arms {
+                    let mut bindings = Vec::new();
+                    Self::pattern_bindings(pattern, &mut bindings);
+                    edges.push((*target, bindings));
+                }
+                edges.push((*otherwise, Vec::new()));
+                edges
+            }
+            Terminator::Unreachable
+            | Terminator::Return(_)
+            | Terminator::Trap(_) => Vec::new(),
+        }
+    }
+
+    fn pattern_bindings(pattern: &MirPattern, output: &mut Vec<LocalId>) {
+        match pattern {
+            MirPattern::Bind(local) => output.push(*local),
+            MirPattern::Variant { args, .. } => {
+                for pattern in args {
+                    Self::pattern_bindings(pattern, output);
+                }
+            }
+            MirPattern::Wildcard
+            | MirPattern::Integer(_)
+            | MirPattern::Bool(_)
+            | MirPattern::String(_) => {}
+        }
+    }
+
+    fn rvalue_operands(value: &Rvalue) -> Vec<&Operand> {
+        match value {
+            Rvalue::Use(operand) | Rvalue::Unary { operand, .. } => vec![operand],
+            Rvalue::Function(_) => Vec::new(),
+            Rvalue::Binary { left, right, .. } => vec![left, right],
+            Rvalue::Call { callee, args } => {
+                std::iter::once(callee).chain(args.iter()).collect()
+            }
+            Rvalue::Struct { fields, .. } => {
+                fields.iter().map(|(_, operand)| operand).collect()
+            }
+            Rvalue::Field { base, .. } => vec![base],
+            Rvalue::Enum { args, .. } => args.iter().collect(),
+        }
+    }
+
+    fn terminator_operands(terminator: &Terminator) -> Vec<&Operand> {
+        match terminator {
+            Terminator::Branch { condition, .. } => vec![condition],
+            Terminator::Match { value, .. } => vec![value],
+            Terminator::Return(Some(value)) => vec![value],
+            Terminator::Unreachable
+            | Terminator::Goto(_)
+            | Terminator::Return(None)
+            | Terminator::Trap(_) => Vec::new(),
+        }
+    }
+
+    fn check_definite_read(
+        function: &MirFunction,
+        block: BlockId,
+        operand: &Operand,
+        defined: &[bool],
+        errors: &mut Vec<MirVerificationError>,
+    ) {
+        if let Operand::Local(local) = operand {
+            if !defined[local.0 as usize] {
+                Self::error(
+                    function,
+                    MirVerificationKind::ReadBeforeAssignment {
+                        block,
+                        local: *local,
+                    },
+                    errors,
+                );
+            }
         }
     }
 
