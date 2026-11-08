@@ -3,6 +3,7 @@
 mod ast;
 mod diagnostic;
 mod hir;
+mod hir_verify;
 mod interpreter;
 mod lexer;
 mod lower_hir;
@@ -33,6 +34,7 @@ pub use hir::{
     HirBlock, HirExpr, HirExprKind, HirFunction, HirGlobalKind, HirMatchArm, HirModule, HirParam,
     HirPattern, HirPatternKind, HirStmt,
 };
+pub use hir_verify::{HirVerificationError, HirVerificationKind, HirVerifier};
 pub use interpreter::{Interpreter, RuntimeError};
 pub use lexer::{LexResult, Lexer};
 pub use lower_hir::HirLowerer;

@@ -1,9 +1,9 @@
 use std::path::Path;
 
 use crate::{
-    Diagnostic, HirLowerer, HirModule, Interpreter, Lexer, MirLowerer, MirModule, MirVerifier,
-    Module, ModuleLoader, Parser, RuntimeError, SemanticModel, SourceFile, SourceManager,
-    TypeChecker, Value,
+    Diagnostic, HirLowerer, HirModule, HirVerifier, Interpreter, Lexer, MirLowerer, MirModule,
+    MirVerifier, Module, ModuleLoader, Parser, RuntimeError, SemanticModel, SourceFile,
+    SourceManager, TypeChecker, Value,
 };
 
 #[derive(Debug, Default)]
@@ -52,12 +52,16 @@ impl Compiler {
 
     pub fn lower_source(&self, name: &str, source: &str) -> Result<HirModule, Vec<Diagnostic>> {
         let checked = self.checked_module(name, source)?;
-        Ok(HirLowerer::lower(&checked.module, &checked.semantic))
+        let hir = HirLowerer::lower(&checked.module, &checked.semantic);
+        HirVerifier::verify(&hir).map_err(hir_verification_diagnostics)?;
+        Ok(hir)
     }
 
     pub fn lower_path(&self, path: &Path) -> Result<HirModule, Vec<Diagnostic>> {
         let checked = self.checked_path_module(path)?;
-        Ok(HirLowerer::lower(&checked.module, &checked.semantic))
+        let hir = HirLowerer::lower(&checked.module, &checked.semantic);
+        HirVerifier::verify(&hir).map_err(hir_verification_diagnostics)?;
+        Ok(hir)
     }
 
     pub fn lower_mir_source(&self, name: &str, source: &str) -> Result<MirModule, Vec<Diagnostic>> {
@@ -181,6 +185,21 @@ fn mir_verification_diagnostics(errors: Vec<crate::MirVerificationError>) -> Vec
                 "TP-E0600",
                 format!(
                     "internal MIR verification failed in function `{}`: {}",
+                    error.function, error.kind
+                ),
+            )
+        })
+        .collect()
+}
+
+fn hir_verification_diagnostics(errors: Vec<crate::HirVerificationError>) -> Vec<Diagnostic> {
+    errors
+        .into_iter()
+        .map(|error| {
+            Diagnostic::error(
+                "TP-E0601",
+                format!(
+                    "internal HIR verification failed in function `{}`: {}",
                     error.function, error.kind
                 ),
             )
