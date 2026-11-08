@@ -287,7 +287,6 @@ fn hir_verification_diagnostics(errors: Vec<crate::HirVerificationError>) -> Vec
         .collect()
 }
 
-
 #[cfg(test)]
 mod verifier_diagnostic_tests {
     use super::{hir_verification_diagnostics, mir_verification_diagnostics};
@@ -317,7 +316,9 @@ mod verifier_diagnostic_tests {
         let diagnostics = mir_verification_diagnostics(vec![MirVerificationError {
             function: "main".to_owned(),
             span,
-            kind: MirVerificationKind::InvalidEntry { entry: BlockId(999) },
+            kind: MirVerificationKind::InvalidEntry {
+                entry: BlockId(999),
+            },
         }]);
         assert_eq!(diagnostics.len(), 1);
         assert_eq!(diagnostics[0].code, "TP-E0600");
