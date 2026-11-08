@@ -4,8 +4,8 @@ use std::{
 };
 
 use crate::{
-    HirBlock, HirExpr, HirExprKind, HirFunction, HirModule, HirPattern, HirPatternKind, HirStmt,
-    SourceId, SourceManager, Span, SymbolId, Type,
+    HirBlock, HirExpr, HirExprKind, HirFunction, HirGlobalKind, HirModule, HirPattern,
+    HirPatternKind, HirStmt, SemanticModel, SourceId, SourceManager, Span, SymbolId, Type,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -50,6 +50,23 @@ pub enum HirVerificationKind {
     ImmutableAssignment {
         symbol: SymbolId,
     },
+    ExpressionSemanticMismatch {
+        expected: Option<Type>,
+        actual: Type,
+    },
+    BlockSemanticMismatch {
+        expected: Option<Type>,
+        actual: Type,
+    },
+    BindingSemanticMismatch {
+        expected: Option<(SymbolId, Type)>,
+        actual_symbol: SymbolId,
+        actual_type: Type,
+    },
+    GlobalSemanticMismatch {
+        expected: Option<HirGlobalKind>,
+        actual: HirGlobalKind,
+    },
 }
 
 impl fmt::Display for HirVerificationKind {
@@ -93,6 +110,24 @@ impl fmt::Display for HirVerificationKind {
             Self::ImmutableAssignment { symbol } => {
                 write!(f, "assignment targets immutable symbol {}", symbol.raw())
             }
+            Self::ExpressionSemanticMismatch { expected, actual } => {
+                write!(f, "HIR expression type {actual} differs from checked type {expected:?}")
+            }
+            Self::BlockSemanticMismatch { expected, actual } => {
+                write!(f, "HIR block type {actual} differs from checked type {expected:?}")
+            }
+            Self::BindingSemanticMismatch {
+                expected,
+                actual_symbol,
+                actual_type,
+            } => write!(
+                f,
+                "HIR binding {}: {actual_type} differs from checked binding {expected:?}",
+                actual_symbol.raw()
+            ),
+            Self::GlobalSemanticMismatch { expected, actual } => {
+                write!(f, "HIR global kind {actual:?} differs from checked {expected:?}")
+            }
         }
     }
 }
@@ -106,6 +141,7 @@ struct Binding {
 struct FunctionVerifier<'a> {
     function: String,
     sources: Option<&'a SourceManager>,
+    semantic: Option<&'a SemanticModel>,
     errors: Vec<HirVerificationError>,
     seen: HashSet<SymbolId>,
     visible: HashMap<SymbolId, Binding>,
@@ -116,24 +152,33 @@ pub struct HirVerifier;
 
 impl HirVerifier {
     pub fn verify(module: &HirModule) -> Result<(), Vec<HirVerificationError>> {
-        Self::verify_inner(module, None)
+        Self::verify_inner(module, None, None)
     }
 
     pub fn verify_with_sources(
         module: &HirModule,
         sources: &SourceManager,
     ) -> Result<(), Vec<HirVerificationError>> {
-        Self::verify_inner(module, Some(sources))
+        Self::verify_inner(module, Some(sources), None)
+    }
+
+    pub fn verify_checked(
+        module: &HirModule,
+        semantic: &SemanticModel,
+        sources: &SourceManager,
+    ) -> Result<(), Vec<HirVerificationError>> {
+        Self::verify_inner(module, Some(sources), Some(semantic))
     }
 
     fn verify_inner(
         module: &HirModule,
         sources: Option<&SourceManager>,
+        semantic: Option<&SemanticModel>,
     ) -> Result<(), Vec<HirVerificationError>> {
         let mut errors = Vec::new();
 
         for function in &module.functions {
-            let mut verifier = FunctionVerifier::new(&function.name, sources);
+            let mut verifier = FunctionVerifier::new(&function.name, sources, semantic);
             verifier.verify_function(function);
             errors.extend(verifier.errors);
         }
@@ -147,10 +192,15 @@ impl HirVerifier {
 }
 
 impl<'a> FunctionVerifier<'a> {
-    fn new(name: &str, sources: Option<&'a SourceManager>) -> Self {
+    fn new(
+        name: &str,
+        sources: Option<&'a SourceManager>,
+        semantic: Option<&'a SemanticModel>,
+    ) -> Self {
         Self {
             function: name.to_owned(),
             sources,
+            semantic,
             errors: Vec::new(),
             seen: HashSet::new(),
             visible: HashMap::new(),
@@ -243,6 +293,18 @@ impl<'a> FunctionVerifier<'a> {
 
     fn verify_block(&mut self, block: &HirBlock) {
         self.check_span(block.span);
+        if let Some(semantic) = self.semantic {
+            let expected = semantic.block_type(block.span).cloned();
+            if expected.as_ref() != Some(&block.ty) {
+                self.error(
+                    block.span,
+                    HirVerificationKind::BlockSemanticMismatch {
+                        expected,
+                        actual: block.ty.clone(),
+                    },
+                );
+            }
+        }
         self.begin_scope();
 
         for statement in &block.statements {
@@ -256,6 +318,21 @@ impl<'a> FunctionVerifier<'a> {
                     ..
                 } => {
                     self.check_span(*span);
+                    if let Some(semantic) = self.semantic {
+                        let expected = semantic
+                            .binding(*span)
+                            .map(|(id, checked_ty)| (id, checked_ty.clone()));
+                        if expected.as_ref() != Some(&(*symbol, ty.clone())) {
+                            self.error(
+                                *span,
+                                HirVerificationKind::BindingSemanticMismatch {
+                                    expected,
+                                    actual_symbol: *symbol,
+                                    actual_type: ty.clone(),
+                                },
+                            );
+                        }
+                    }
                     // The initializer runs before its binding becomes visible.
                     // Explicit annotations can be more precise than generic
                     // constructors (for instance: Maybe<i64> initialized by None).
@@ -287,6 +364,18 @@ impl<'a> FunctionVerifier<'a> {
 
     fn verify_expr(&mut self, expr: &HirExpr) {
         self.check_span(expr.span);
+        if let Some(semantic) = self.semantic {
+            let expected = semantic.expr_type(expr.span).cloned();
+            if expected.as_ref() != Some(&expr.ty) {
+                self.error(
+                    expr.span,
+                    HirVerificationKind::ExpressionSemanticMismatch {
+                        expected,
+                        actual: expr.ty.clone(),
+                    },
+                );
+            }
+        }
 
         match &expr.kind {
             HirExprKind::Integer(_) => self.check_literal(expr, Type::I64),
@@ -296,7 +385,20 @@ impl<'a> FunctionVerifier<'a> {
             HirExprKind::Local(symbol) => {
                 self.check_local(*symbol, &expr.ty, expr.span);
             }
-            HirExprKind::Global { .. } => {}
+            HirExprKind::Global { kind, .. } => {
+                if let Some(semantic) = self.semantic {
+                    let expected = semantic.global(expr.span);
+                    if expected != Some(*kind) {
+                        self.error(
+                            expr.span,
+                            HirVerificationKind::GlobalSemanticMismatch {
+                                expected,
+                                actual: *kind,
+                            },
+                        );
+                    }
+                }
+            }
             HirExprKind::Unary { expr: inner, .. } => self.verify_expr(inner),
             HirExprKind::Binary { left, right, .. } => {
                 self.verify_expr(left);
