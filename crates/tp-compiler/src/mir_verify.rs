@@ -35,11 +35,9 @@ impl fmt::Display for MirVerificationKind {
                 "local at index {index} has ID {}, but local IDs must equal their indices",
                 actual.0
             ),
-            Self::InvalidSuccessor { from, target } => write!(
-                f,
-                "block {} targets nonexistent block {}",
-                from.0, target.0
-            ),
+            Self::InvalidSuccessor { from, target } => {
+                write!(f, "block {} targets nonexistent block {}", from.0, target.0)
+            }
             Self::InvalidParameterLocal { local } => {
                 write!(f, "parameter refers to nonexistent local {}", local.0)
             }
@@ -47,7 +45,11 @@ impl fmt::Display for MirVerificationKind {
                 write!(f, "parameter local {} appears more than once", local.0)
             }
             Self::InvalidLocalReference { block, local } => {
-                write!(f, "block {} refers to nonexistent local {}", block.0, local.0)
+                write!(
+                    f,
+                    "block {} refers to nonexistent local {}",
+                    block.0, local.0
+                )
             }
         }
     }

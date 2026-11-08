@@ -1,8 +1,8 @@
 use std::path::Path;
 
 use crate::{
-    Diagnostic, HirLowerer, HirModule, Interpreter, Lexer, MirLowerer, MirModule, Module,
-    MirVerifier, ModuleLoader, Parser, RuntimeError, SemanticModel, SourceFile, SourceManager,
+    Diagnostic, HirLowerer, HirModule, Interpreter, Lexer, MirLowerer, MirModule, MirVerifier,
+    Module, ModuleLoader, Parser, RuntimeError, SemanticModel, SourceFile, SourceManager,
     TypeChecker, Value,
 };
 
