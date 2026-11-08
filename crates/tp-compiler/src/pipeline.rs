@@ -2,8 +2,8 @@ use std::path::Path;
 
 use crate::{
     Diagnostic, HirLowerer, HirModule, Interpreter, Lexer, MirLowerer, MirModule, Module,
-    ModuleLoader, Parser, RuntimeError, SemanticModel, SourceFile, SourceManager, TypeChecker,
-    Value,
+    MirVerifier, ModuleLoader, Parser, RuntimeError, SemanticModel, SourceFile, SourceManager,
+    TypeChecker, Value,
 };
 
 #[derive(Debug, Default)]
@@ -62,12 +62,16 @@ impl Compiler {
 
     pub fn lower_mir_source(&self, name: &str, source: &str) -> Result<MirModule, Vec<Diagnostic>> {
         let hir = self.lower_source(name, source)?;
-        Ok(MirLowerer::lower(&hir))
+        let mir = MirLowerer::lower(&hir);
+        MirVerifier::verify(&mir).map_err(mir_verification_diagnostics)?;
+        Ok(mir)
     }
 
     pub fn lower_mir_path(&self, path: &Path) -> Result<MirModule, Vec<Diagnostic>> {
         let hir = self.lower_path(path)?;
-        Ok(MirLowerer::lower(&hir))
+        let mir = MirLowerer::lower(&hir);
+        MirVerifier::verify(&mir).map_err(mir_verification_diagnostics)?;
+        Ok(mir)
     }
 
     pub fn run_source(&self, name: &str, source: &str) -> Result<RunReport, RunFailure> {
@@ -167,4 +171,19 @@ pub struct RunReport {
 pub enum RunFailure {
     Compile(Vec<Diagnostic>),
     Runtime(RuntimeError),
+}
+
+fn mir_verification_diagnostics(errors: Vec<crate::MirVerificationError>) -> Vec<Diagnostic> {
+    errors
+        .into_iter()
+        .map(|error| {
+            Diagnostic::error(
+                "TP-E0600",
+                format!(
+                    "internal MIR verification failed in function `{}`: {}",
+                    error.function, error.kind
+                ),
+            )
+        })
+        .collect()
 }
