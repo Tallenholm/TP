@@ -1,6 +1,6 @@
 use tp_compiler::{
-    Compiler, HirExprKind, HirPatternKind, HirStmt, HirVerificationKind, HirVerifier, SourceFile,
-    Type,
+    Compiler, HirExprKind, HirGlobalKind, HirPatternKind, HirStmt, HirVerificationKind,
+    HirVerifier, SourceFile, Type,
 };
 
 fn valid() -> tp_compiler::HirModule {
@@ -251,6 +251,119 @@ fn rejects_span_inside_utf8_character() {
         errors.iter().any(|error| matches!(
             error.kind,
             HirVerificationKind::InvalidSourceBoundary { .. }
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn valid_hir_agrees_with_original_semantic_model() {
+    let snapshot = Compiler::new()
+        .analyze_source(
+            "main.tp",
+            "fn helper() -> i64 { 2 } fn main() -> i64 { let x = helper(); x }",
+        )
+        .expect("valid program");
+    assert!(
+        HirVerifier::verify_checked(
+            snapshot.hir(),
+            snapshot.semantic(),
+            snapshot.sources(),
+        )
+        .is_ok()
+    );
+}
+
+#[test]
+fn rejects_hir_expression_type_that_differs_from_semantic_model() {
+    let snapshot = Compiler::new()
+        .analyze_source("main.tp", "fn main() -> i64 { 42 }")
+        .expect("valid program");
+    let mut hir = snapshot.hir().clone();
+    let HirStmt::Expr { expr, .. } = &mut hir.functions[0].body.statements[0] else {
+        panic!("expected expression");
+    };
+    expr.ty = Type::Bool;
+    let errors = HirVerifier::verify_checked(&hir, snapshot.semantic(), snapshot.sources())
+        .expect_err("tampered HIR expression type must fail");
+    assert!(
+        errors.iter().any(|error| matches!(
+            error.kind,
+            HirVerificationKind::ExpressionSemanticMismatch { .. }
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_binding_type_that_differs_from_semantic_model() {
+    let snapshot = Compiler::new()
+        .analyze_source("main.tp", "fn main() -> i64 { let x = 1; x }")
+        .expect("valid program");
+    let mut hir = snapshot.hir().clone();
+    let HirStmt::Let { ty, .. } = &mut hir.functions[0].body.statements[0] else {
+        panic!("expected checked binding");
+    };
+    *ty = Type::Bool;
+    let errors = HirVerifier::verify_checked(&hir, snapshot.semantic(), snapshot.sources())
+        .expect_err("tampered checked binding type must fail");
+    assert!(
+        errors.iter().any(|error| matches!(
+            error.kind,
+            HirVerificationKind::BindingSemanticMismatch { .. }
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_block_type_that_differs_from_semantic_model() {
+    let snapshot = Compiler::new()
+        .analyze_source("main.tp", "fn main() -> i64 { 42 }")
+        .expect("valid program");
+    let mut hir = snapshot.hir().clone();
+    hir.functions[0].body.ty = Type::Bool;
+    let errors = HirVerifier::verify_checked(&hir, snapshot.semantic(), snapshot.sources())
+        .expect_err("tampered block result type must fail");
+    assert!(
+        errors.iter().any(|error| matches!(
+            error.kind,
+            HirVerificationKind::BlockSemanticMismatch { .. }
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_global_resolution_kind_that_differs_from_semantic_model() {
+    let snapshot = Compiler::new()
+        .analyze_source(
+            "main.tp",
+            "fn helper() -> i64 { 2 } fn main() -> i64 { helper() }",
+        )
+        .expect("valid program");
+    let mut hir = snapshot.hir().clone();
+    let main = hir
+        .functions
+        .iter_mut()
+        .find(|function| function.name == "main")
+        .expect("main function");
+    let HirStmt::Expr { expr, .. } = &mut main.body.statements[0] else {
+        panic!("expected call");
+    };
+    let HirExprKind::Call { callee, .. } = &mut expr.kind else {
+        panic!("expected call expression");
+    };
+    let HirExprKind::Global { kind, .. } = &mut callee.kind else {
+        panic!("expected global callee");
+    };
+    *kind = HirGlobalKind::Builtin;
+    let errors = HirVerifier::verify_checked(&hir, snapshot.semantic(), snapshot.sources())
+        .expect_err("changed global resolution must fail");
+    assert!(
+        errors.iter().any(|error| matches!(
+            error.kind,
+            HirVerificationKind::GlobalSemanticMismatch { .. }
         )),
         "{errors:#?}"
     );
