@@ -1,8 +1,8 @@
 use std::{collections::HashSet, fmt};
 
 use crate::{
-    BlockId, Constant, LocalId, MirFunction, MirModule, MirPattern, MirStatement, Operand, Rvalue,
-    Span, Terminator, Type,
+    BinaryOp, BlockId, Constant, LocalId, MirFunction, MirModule, MirPattern, MirStatement, Operand,
+    Rvalue, Span, Terminator, Type, UnaryOp,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -56,6 +56,17 @@ pub enum MirVerificationKind {
         target: LocalId,
         expected: Type,
         actual: Type,
+    },
+    InvalidUnaryOperandType {
+        block: BlockId,
+        op: UnaryOp,
+        actual: Type,
+    },
+    InvalidBinaryOperandType {
+        block: BlockId,
+        op: BinaryOp,
+        left: Type,
+        right: Type,
     },
     UnknownFunctionReference {
         name: String,
@@ -120,6 +131,21 @@ impl fmt::Display for MirVerificationKind {
                 f,
                 "block {} assigns primitive {actual} to local {} of type {expected}",
                 block.0, target.0
+            ),
+            Self::InvalidUnaryOperandType { block, op, actual } => write!(
+                f,
+                "block {} uses unary {op:?} with invalid operand type {actual}",
+                block.0
+            ),
+            Self::InvalidBinaryOperandType {
+                block,
+                op,
+                left,
+                right,
+            } => write!(
+                f,
+                "block {} uses binary {op:?} with invalid operand types {left} and {right}",
+                block.0
             ),
             Self::UnknownFunctionReference { name } => {
                 write!(f, "MIR references nonexistent callable `{name}`")
@@ -411,8 +437,28 @@ impl MirVerifier {
         errors: &mut Vec<MirVerificationError>,
     ) {
         match value {
-            Rvalue::Use(operand) | Rvalue::Unary { operand, .. } => {
+            Rvalue::Use(operand) => {
                 Self::check_operand(function, block, operand, errors);
+            }
+            Rvalue::Unary { op, operand } => {
+                Self::check_operand(function, block, operand, errors);
+                if let Some(actual) = Self::operand_type(function, operand) {
+                    let valid = match op {
+                        UnaryOp::Negate => matches!(actual, Type::I64 | Type::F64 | Type::Never),
+                        UnaryOp::Not => matches!(actual, Type::Bool | Type::Never),
+                    };
+                    if !valid && actual != Type::Unknown {
+                        Self::error(
+                            function,
+                            MirVerificationKind::InvalidUnaryOperandType {
+                                block,
+                                op: *op,
+                                actual,
+                            },
+                            errors,
+                        );
+                    }
+                }
             }
             Rvalue::Function(name) => {
                 if name != "print" && !known_functions.contains(name.as_str()) {
@@ -423,9 +469,42 @@ impl MirVerifier {
                     );
                 }
             }
-            Rvalue::Binary { left, right, .. } => {
+            Rvalue::Binary { op, left, right } => {
                 Self::check_operand(function, block, left, errors);
                 Self::check_operand(function, block, right, errors);
+                if let (Some(left_ty), Some(right_ty)) = (
+                    Self::operand_type(function, left),
+                    Self::operand_type(function, right),
+                ) {
+                    let valid = match op {
+                        BinaryOp::And | BinaryOp::Or => {
+                            left_ty == Type::Bool && right_ty == Type::Bool
+                        }
+                        BinaryOp::Add
+                        | BinaryOp::Subtract
+                        | BinaryOp::Multiply
+                        | BinaryOp::Divide
+                        | BinaryOp::Remainder => {
+                            matches!(left_ty, Type::I64 | Type::F64) && left_ty == right_ty
+                        }
+                        _ => true,
+                    };
+                    if !valid
+                        && !matches!(left_ty, Type::Never | Type::Unknown)
+                        && !matches!(right_ty, Type::Never | Type::Unknown)
+                    {
+                        Self::error(
+                            function,
+                            MirVerificationKind::InvalidBinaryOperandType {
+                                block,
+                                op: *op,
+                                left: left_ty,
+                                right: right_ty,
+                            },
+                            errors,
+                        );
+                    }
+                }
             }
             Rvalue::Call { callee, args } => {
                 Self::check_operand(function, block, callee, errors);
