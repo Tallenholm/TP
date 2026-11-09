@@ -627,3 +627,50 @@ fn rejects_mixed_primitive_equality() {
         "{errors:#?}"
     );
 }
+
+#[test]
+fn rejects_unary_boolean_result_assigned_to_integer() {
+    let mut mir = sample();
+    let function = &mut mir.functions[0];
+    let entry = function.entry;
+    function.blocks[entry.0 as usize].statements[0] = MirStatement::Assign {
+        target: LocalId(0),
+        value: Rvalue::Unary {
+            op: UnaryOp::Not,
+            operand: Operand::Constant(Constant::Bool(true)),
+        },
+    };
+    let errors = MirVerifier::verify(&mir).expect_err("wrong operation result type must fail");
+    assert!(
+        errors.iter().any(|error| matches!(
+            &error.kind,
+            MirVerificationKind::InvalidAssignmentType { expected, actual, .. }
+                if *expected == Type::I64 && *actual == Type::Bool
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_comparison_boolean_result_assigned_to_integer() {
+    let mut mir = sample();
+    let function = &mut mir.functions[0];
+    let entry = function.entry;
+    function.blocks[entry.0 as usize].statements[0] = MirStatement::Assign {
+        target: LocalId(0),
+        value: Rvalue::Binary {
+            op: BinaryOp::Less,
+            left: Operand::Constant(Constant::I64(1)),
+            right: Operand::Constant(Constant::I64(2)),
+        },
+    };
+    let errors = MirVerifier::verify(&mir).expect_err("wrong operation result type must fail");
+    assert!(
+        errors.iter().any(|error| matches!(
+            &error.kind,
+            MirVerificationKind::InvalidAssignmentType { expected, actual, .. }
+                if *expected == Type::I64 && *actual == Type::Bool
+        )),
+        "{errors:#?}"
+    );
+}
