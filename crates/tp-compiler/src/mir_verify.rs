@@ -425,10 +425,7 @@ impl MirVerifier {
         }
     }
 
-    fn verify_definite_assignments(
-        function: &MirFunction,
-        errors: &mut Vec<MirVerificationError>,
-    ) {
+    fn verify_definite_assignments(function: &MirFunction, errors: &mut Vec<MirVerificationError>) {
         if function.blocks.is_empty() {
             return;
         }
@@ -447,9 +444,8 @@ impl MirVerifier {
                 continue;
             }
             reachable[index] = true;
-            for (destination, bindings) in Self::successor_edges(
-                &function.blocks[index].terminator,
-            ) {
+            for (destination, bindings) in Self::successor_edges(&function.blocks[index].terminator)
+            {
                 let target = destination.0 as usize;
                 predecessors[target].push((index, bindings));
                 if !reachable[target] {
@@ -536,9 +532,7 @@ impl MirVerifier {
                 edges.push((*otherwise, Vec::new()));
                 edges
             }
-            Terminator::Unreachable
-            | Terminator::Return(_)
-            | Terminator::Trap(_) => Vec::new(),
+            Terminator::Unreachable | Terminator::Return(_) | Terminator::Trap(_) => Vec::new(),
         }
     }
 
@@ -562,12 +556,8 @@ impl MirVerifier {
             Rvalue::Use(operand) | Rvalue::Unary { operand, .. } => vec![operand],
             Rvalue::Function(_) => Vec::new(),
             Rvalue::Binary { left, right, .. } => vec![left, right],
-            Rvalue::Call { callee, args } => {
-                std::iter::once(callee).chain(args.iter()).collect()
-            }
-            Rvalue::Struct { fields, .. } => {
-                fields.iter().map(|(_, operand)| operand).collect()
-            }
+            Rvalue::Call { callee, args } => std::iter::once(callee).chain(args.iter()).collect(),
+            Rvalue::Struct { fields, .. } => fields.iter().map(|(_, operand)| operand).collect(),
             Rvalue::Field { base, .. } => vec![base],
             Rvalue::Enum { args, .. } => args.iter().collect(),
         }
