@@ -499,7 +499,10 @@ fn rejects_boolean_not_applied_to_integer() {
     let entry = function.entry;
     function.blocks[entry.0 as usize].statements[0] = MirStatement::Assign {
         target: LocalId(0),
-        value: Rvalue::Unary { op: UnaryOp::Not, operand: Operand::Constant(Constant::I64(7)) },
+        value: Rvalue::Unary {
+            op: UnaryOp::Not,
+            operand: Operand::Constant(Constant::I64(7)),
+        },
     };
     let errors = MirVerifier::verify(&mir).expect_err("malformed primitive operation must fail");
     assert!(
@@ -518,7 +521,10 @@ fn rejects_numeric_negation_of_boolean() {
     let entry = function.entry;
     function.blocks[entry.0 as usize].statements[0] = MirStatement::Assign {
         target: LocalId(0),
-        value: Rvalue::Unary { op: UnaryOp::Negate, operand: Operand::Constant(Constant::Bool(true)) },
+        value: Rvalue::Unary {
+            op: UnaryOp::Negate,
+            operand: Operand::Constant(Constant::Bool(true)),
+        },
     };
     let errors = MirVerifier::verify(&mir).expect_err("malformed primitive operation must fail");
     assert!(
@@ -537,7 +543,11 @@ fn rejects_boolean_and_of_integers() {
     let entry = function.entry;
     function.blocks[entry.0 as usize].statements[0] = MirStatement::Assign {
         target: LocalId(0),
-        value: Rvalue::Binary { op: BinaryOp::And, left: Operand::Constant(Constant::I64(1)), right: Operand::Constant(Constant::I64(2)) },
+        value: Rvalue::Binary {
+            op: BinaryOp::And,
+            left: Operand::Constant(Constant::I64(1)),
+            right: Operand::Constant(Constant::I64(2)),
+        },
     };
     let errors = MirVerifier::verify(&mir).expect_err("malformed primitive operation must fail");
     assert!(
@@ -556,7 +566,11 @@ fn rejects_mixed_numeric_arithmetic() {
     let entry = function.entry;
     function.blocks[entry.0 as usize].statements[0] = MirStatement::Assign {
         target: LocalId(0),
-        value: Rvalue::Binary { op: BinaryOp::Add, left: Operand::Constant(Constant::I64(1)), right: Operand::Constant(Constant::Bool(true)) },
+        value: Rvalue::Binary {
+            op: BinaryOp::Add,
+            left: Operand::Constant(Constant::I64(1)),
+            right: Operand::Constant(Constant::Bool(true)),
+        },
     };
     let errors = MirVerifier::verify(&mir).expect_err("malformed primitive operation must fail");
     assert!(
