@@ -21,8 +21,8 @@
 | G3-R06 | Compiler query API contracts | IN PROGRESS | Noncached `CompilationSnapshot` exposes SourceManager, AST, checked semantic model, verified HIR/MIR, optional canonical ModuleGraph; six query tests green CI 42505002345. Incremental caching/invalidation deliberately deferred in ADR-0003. |
 | G3-R07 | Typed structured internal and user diagnostics | IN PROGRESS | Typed HIR/MIR error enums and stable `TP-E0601` / `TP-E0600` outward codes. Internal source-span-to-primary-diagnostic mapping and complete machine-structured provenance remain open. |
 | G3-R08 | HIR verifier | IN PROGRESS | Scoped symbols, checked expression/block/function/parameter/global/pattern/local metadata and source UTF-8 provenance verified. 23/23 dedicated tests passed pinned Rust 1.85 CI 42506018205 and 42506366279; deeper type/flow completeness pending. |
-| G3-R09 | MIR verifier and guarded execution | IN PROGRESS | MIR index/CFG/local/parameter/callable structural checks and primitive branch/return type checks; public `Interpreter::run_main` validates MIR. 26/26 dedicated MIR tests passed CI 42582121633, including primitive copy assignment typing and definite-assignment join, uninitialized return, match-arm bindings and loops; six additional mutation/property-style tests passed. Full type/flow proof pending. |
-| G3-R10 | Negative/adversarial malformed-IR corpus | IN PROGRESS | 23 HIR + 26 MIR verifier tests, six deterministic mutation tests, and six query tests pass CI 42582121633, alongside frozen 144-case M1 oracle. More graph/property/fuzz/IR-dominance tests required. |
+| G3-R09 | MIR verifier and guarded execution | IN PROGRESS | MIR index/CFG/local/parameter/callable structural checks and primitive branch/return type checks; public `Interpreter::run_main` validates MIR. 26/26 dedicated MIR tests passed CI 42582121633, including primitive copy assignment typing and definite-assignment join, uninitialized return, match-arm bindings and loops; eight additional mutation/property-style tests passed. Full type/flow proof pending. |
+| G3-R10 | Negative/adversarial malformed-IR corpus | IN PROGRESS | 23 HIR + 26 MIR verifier tests, eight deterministic mutation/stress tests, and six query tests pass CI 42582121633, alongside frozen 144-case M1 oracle. More graph/property/fuzz/IR-dominance tests required. |
 | G3-R11 | Full regression / conformance / CI / final architecture review | IN PROGRESS | Exact-head pinned/locked Rust CI 42582121633 PASS (fmt, Clippy, workspace, 144 M1 conformance, Hello/Fibonacci). Final review, fuzz/property budget and Gate 3 approval still pending. |
 
 ## 2. Test-Driven Evidence
@@ -72,6 +72,7 @@
 - Initial CI [42581885457](https://github.com/Tallenholm/TP/actions/runs/42581885457) failed formatting only; not counted as functional RED. Corrected formatting then [CI 42581936948](https://github.com/Tallenholm/TP/actions/runs/42581936948) passed all **6/6** new mutation tests, 24 MIR verifier tests, 23 HIR tests, six query tests, the frozen M1 corpus, locked Rust 1.85 fmt/Clippy/workspace and Hello/Fibonacci.
 - New primitive copy assignment checks: two test-first cases in `mir_verifier.rs` require `InvalidAssignmentType` when a Bool constant or Bool local is copied into an i64 local. Formatting-only CI [42582007912](https://github.com/Tallenholm/TP/actions/runs/42582007912) is not functional RED; corrected [CI 42582063728](https://github.com/Tallenholm/TP/actions/runs/42582063728) passed formatting but failed Rust E0599 on missing `MirVerificationKind::InvalidAssignmentType`, the intended **RED**.
 - Minimal implementation in `mir_verify.rs` validates primitive-to-primitive `Rvalue::Use` assignment targets without trying to infer contextual named/generic types. [CI 42582121633](https://github.com/Tallenholm/TP/actions/runs/42582121633) **GREEN**, pinned Rust 1.85.0 formatter, Clippy, complete workspace, frozen M1 conformance, and smoke examples all PASS. These checks are intentionally partial; a full typed MIR verifier remains an open requirement.
+- Additional generated CFG stress: two tests construct a valid **64-block linear MIR CFG**, verify and execute it, then mutate the middle edge to `BlockId(u32::MAX)` and require a typed verifier failure. Formatting-only CI [42582284737](https://github.com/Tallenholm/TP/actions/runs/42582284737) was corrected; [CI 42582336467](https://github.com/Tallenholm/TP/actions/runs/42582336467) **GREEN**, with all eight mutation/stress tests, 26 MIR verifier tests, 23 HIR tests, six query tests, the frozen M1 corpus, formatter/Clippy/workspace and smoke tests passing.
 - Gate 3 remains ACTIVE and draft; this is not a Gate 3 PASS decision.
 
 The intermediate formatting-only failures do **not** count as successful RED demonstrations. Final whole-branch security/architecture review is not complete.
@@ -84,7 +85,7 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 ```
 
-These are required for each completed code increment and at exit. Gate 3 work will also run verifier-negative cases, the full 144-case M1 conformance corpus, and Hello/Fibonacci smoke tests. Initial Gate 3 T02 verification PASS on exact head `5ff892d963a0b602e8f88d86ff3b45e132c577b3` via CI 42499191663, including 7/7 verifier tests and full frozen M1 regression. Current independently verified implementation head `0938039a8d976acfc8034b39123ce6aae5e4ca8a` passed exact-head CI **42582121633**: 26/26 MIR, 23/23 HIR, six mutation and six query tests, all frozen 144 M1 conformance cases, workspace, formatter, Clippy and Hello/Fibonacci. This evidence-closure commit must also pass fresh CI before a completion claim. Final Gate 3 exit verification has **not** been claimed. Final full Gate 3 exit verification is not yet claimed.
+These are required for each completed code increment and at exit. Gate 3 work will also run verifier-negative cases, the full 144-case M1 conformance corpus, and Hello/Fibonacci smoke tests. Initial Gate 3 T02 verification PASS on exact head `5ff892d963a0b602e8f88d86ff3b45e132c577b3` via CI 42499191663, including 7/7 verifier tests and full frozen M1 regression. Current independently verified implementation head `8f13b93f5514204a9eba7470d33444b2b10f0905` passed exact-head CI **42582336467**: 26/26 MIR, 23/23 HIR, eight mutation/stress and six query tests, all frozen 144 M1 conformance cases, workspace, formatter, Clippy and Hello/Fibonacci. This evidence-closure commit must also pass fresh CI before a completion claim. Final Gate 3 exit verification has **not** been claimed. Final full Gate 3 exit verification is not yet claimed.
 
 - [Definite-assignment GREEN CI 42581727725](https://github.com/Tallenholm/TP/actions/runs/42581727725) on `48ef6eb`: 24/24 MIR, 23/23 HIR, six queries, M1 conformance, fmt/Clippy/workspace/smokes PASS.
 
@@ -107,14 +108,14 @@ These are required for each completed code increment and at exit. Gate 3 work wi
 
 ## 5. Conformance Evidence
 
-**Gate 3 cases passed:** 26/26 MIR + 23/23 HIR + six mutation + six query tests on CI 42582121633.  
-**Gate 3 cases failed:** none on verified implementation head `0938039a8d976acfc8034b39123ce6aae5e4ca8a`.  
+**Gate 3 cases passed:** 26/26 MIR + 23/23 HIR + eight mutation/stress + six query tests on CI 42582121633.  
+**Gate 3 cases failed:** none on verified implementation head `8f13b93f5514204a9eba7470d33444b2b10f0905`.  
 **Frozen baseline:** M1 Gate 2 144/144 PASS.  
 **Exclusions:** none approved.
 
 ## 6. Fuzz / Property / Stress Evidence
 
-Deterministic adversarial mutation suite: six tests in `mir_mutation.rs`, nine invalid ID/edge values per mutation family and 128 repeated verifier checks for both valid and invalid MIR, PASS CI 42581936948 and 42582121633. This is property-style deterministic stress only; **no coverage-guided fuzz evidence** or large-scale performance data claimed. A bounded seeded CFG generator and sanitizer/fuzz budget remain open.
+Deterministic adversarial mutation suite: eight tests in `mir_mutation.rs`, nine invalid ID/edge values per mutation family and 128 repeated verifier checks for both valid and invalid MIR, PASS CI 42581936948, 42582121633, and 42582336467; includes two generated 64-block CFG stress cases. This is property-style deterministic stress only; **no coverage-guided fuzz evidence** or large-scale performance data claimed. A bounded seeded CFG generator and sanitizer/fuzz budget remain open.
 
 ## 7. Performance Evidence
 
