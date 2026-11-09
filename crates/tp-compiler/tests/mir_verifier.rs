@@ -1,6 +1,6 @@
 use tp_compiler::{
-    BinaryOp, BlockId, Compiler, Constant, Interpreter, LocalId, MirModule, MirPattern, MirStatement,
-    MirVerificationKind, MirVerifier, Operand, Rvalue, Terminator, Type, UnaryOp,
+    BinaryOp, BlockId, Compiler, Constant, Interpreter, LocalId, MirModule, MirPattern,
+    MirStatement, MirVerificationKind, MirVerifier, Operand, Rvalue, Terminator, Type, UnaryOp,
 };
 
 fn sample() -> MirModule {
