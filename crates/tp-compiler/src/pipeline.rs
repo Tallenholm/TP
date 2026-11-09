@@ -1,9 +1,9 @@
 use std::path::Path;
 
 use crate::{
-    Diagnostic, HirLowerer, HirModule, Interpreter, Lexer, MirLowerer, MirModule, Module,
-    ModuleLoader, Parser, RuntimeError, SemanticModel, SourceFile, SourceManager, TypeChecker,
-    Value,
+    Diagnostic, HirLowerer, HirModule, HirVerifier, Interpreter, Lexer, MirLowerer, MirModule,
+    MirVerifier, Module, ModuleGraph, ModuleLoader, Parser, RuntimeError, SemanticModel,
+    SourceFile, SourceManager, TypeChecker, Value,
 };
 
 #[derive(Debug, Default)]
@@ -12,6 +12,45 @@ pub struct Compiler;
 impl Compiler {
     pub fn new() -> Self {
         Self
+    }
+
+    /// A checked, immutable, noncached snapshot for tooling and analysis.
+    pub fn analyze_source(
+        &self,
+        name: &str,
+        source: &str,
+    ) -> Result<CompilationSnapshot, Vec<Diagnostic>> {
+        Self::snapshot(self.checked_module(name, source)?)
+    }
+
+    pub fn analyze_path(&self, path: &Path) -> Result<CompilationSnapshot, Vec<Diagnostic>> {
+        Self::snapshot(self.checked_path_module(path)?)
+    }
+
+    fn snapshot(checked: CheckedModule) -> Result<CompilationSnapshot, Vec<Diagnostic>> {
+        let hir = Self::verified_hir(&checked)?;
+        let mir = Self::verified_mir(&hir)?;
+        Ok(CompilationSnapshot {
+            sources: checked.sources,
+            graph: checked.graph,
+            module: checked.module,
+            semantic: checked.semantic,
+            hir,
+            mir,
+        })
+    }
+
+    fn verified_hir(checked: &CheckedModule) -> Result<HirModule, Vec<Diagnostic>> {
+        let hir = HirLowerer::lower(&checked.module, &checked.semantic);
+        HirVerifier::verify_checked(&hir, &checked.semantic, &checked.sources)
+            .map_err(hir_verification_diagnostics)?;
+        Ok(hir)
+    }
+
+    fn verified_mir(hir: &HirModule) -> Result<MirModule, Vec<Diagnostic>> {
+        let mir = MirLowerer::lower(hir);
+        MirVerifier::verify(&mir).map_err(mir_verification_diagnostics)?;
+        Ok(mir)
     }
 
     pub fn check_source(&self, name: &str, source: &str) -> CompileReport {
@@ -52,22 +91,22 @@ impl Compiler {
 
     pub fn lower_source(&self, name: &str, source: &str) -> Result<HirModule, Vec<Diagnostic>> {
         let checked = self.checked_module(name, source)?;
-        Ok(HirLowerer::lower(&checked.module, &checked.semantic))
+        Self::verified_hir(&checked)
     }
 
     pub fn lower_path(&self, path: &Path) -> Result<HirModule, Vec<Diagnostic>> {
         let checked = self.checked_path_module(path)?;
-        Ok(HirLowerer::lower(&checked.module, &checked.semantic))
+        Self::verified_hir(&checked)
     }
 
     pub fn lower_mir_source(&self, name: &str, source: &str) -> Result<MirModule, Vec<Diagnostic>> {
         let hir = self.lower_source(name, source)?;
-        Ok(MirLowerer::lower(&hir))
+        Self::verified_mir(&hir)
     }
 
     pub fn lower_mir_path(&self, path: &Path) -> Result<MirModule, Vec<Diagnostic>> {
         let hir = self.lower_path(path)?;
-        Ok(MirLowerer::lower(&hir))
+        Self::verified_mir(&hir)
     }
 
     pub fn run_source(&self, name: &str, source: &str) -> Result<RunReport, RunFailure> {
@@ -110,6 +149,8 @@ impl Compiler {
 
     fn checked_module(&self, name: &str, source: &str) -> Result<CheckedModule, Vec<Diagnostic>> {
         let source_file = SourceFile::new(name, source);
+        let mut sources = SourceManager::default();
+        sources.insert(source_file.clone());
         let lexed = Lexer::new(&source_file).lex();
         let mut diagnostics = lexed.diagnostics;
 
@@ -126,6 +167,8 @@ impl Compiler {
             Ok(CheckedModule {
                 module,
                 semantic: checked.semantic,
+                sources,
+                graph: None,
             })
         } else {
             Err(checked.diagnostics)
@@ -133,12 +176,18 @@ impl Compiler {
     }
 
     fn checked_path_module(&self, path: &Path) -> Result<CheckedModule, Vec<Diagnostic>> {
-        let module = ModuleLoader::load(path)?;
+        let loaded = ModuleLoader::load_with_sources(path);
+        if !loaded.diagnostics.is_empty() {
+            return Err(loaded.diagnostics);
+        }
+        let module = loaded.module.unwrap_or(Module { items: Vec::new() });
         let checked = TypeChecker::check_module(&module);
         if checked.diagnostics.is_empty() {
             Ok(CheckedModule {
                 module,
                 semantic: checked.semantic,
+                sources: loaded.sources,
+                graph: Some(loaded.graph),
             })
         } else {
             Err(checked.diagnostics)
@@ -149,6 +198,45 @@ impl Compiler {
 struct CheckedModule {
     module: Module,
     semantic: SemanticModel,
+    sources: SourceManager,
+    graph: Option<ModuleGraph>,
+}
+
+/// A single checked compilation; numeric source/symbol IDs are session-scoped.
+#[derive(Debug)]
+pub struct CompilationSnapshot {
+    sources: SourceManager,
+    graph: Option<ModuleGraph>,
+    module: Module,
+    semantic: SemanticModel,
+    hir: HirModule,
+    mir: MirModule,
+}
+
+impl CompilationSnapshot {
+    pub fn sources(&self) -> &SourceManager {
+        &self.sources
+    }
+
+    pub fn module_graph(&self) -> Option<&ModuleGraph> {
+        self.graph.as_ref()
+    }
+
+    pub fn module(&self) -> &Module {
+        &self.module
+    }
+
+    pub fn semantic(&self) -> &SemanticModel {
+        &self.semantic
+    }
+
+    pub fn hir(&self) -> &HirModule {
+        &self.hir
+    }
+
+    pub fn mir(&self) -> &MirModule {
+        &self.mir
+    }
 }
 
 #[derive(Debug, Default)]
@@ -167,4 +255,75 @@ pub struct RunReport {
 pub enum RunFailure {
     Compile(Vec<Diagnostic>),
     Runtime(RuntimeError),
+}
+
+fn mir_verification_diagnostics(errors: Vec<crate::MirVerificationError>) -> Vec<Diagnostic> {
+    errors
+        .into_iter()
+        .map(|error| {
+            Diagnostic::error(
+                "TP-E0600",
+                format!(
+                    "internal MIR verification failed in function `{}`: {}",
+                    error.function, error.kind
+                ),
+            )
+            .with_primary(error.span)
+        })
+        .collect()
+}
+
+fn hir_verification_diagnostics(errors: Vec<crate::HirVerificationError>) -> Vec<Diagnostic> {
+    errors
+        .into_iter()
+        .map(|error| {
+            Diagnostic::error(
+                "TP-E0601",
+                format!(
+                    "internal HIR verification failed in function `{}`: {}",
+                    error.function, error.kind
+                ),
+            )
+            .with_primary(error.span)
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod verifier_diagnostic_tests {
+    use super::{hir_verification_diagnostics, mir_verification_diagnostics};
+    use crate::{
+        BlockId, HirVerificationError, HirVerificationKind, MirVerificationError,
+        MirVerificationKind, SourceFile, Span,
+    };
+
+    #[test]
+    fn hir_diagnostic_keeps_verified_source_span() {
+        let source = SourceFile::new("main.tp", "fn main() {}");
+        let span = Span::new(source.id(), 0, 2);
+        let diagnostics = hir_verification_diagnostics(vec![HirVerificationError {
+            function: "main".to_owned(),
+            span,
+            kind: HirVerificationKind::InvalidSpan { start: 2, end: 1 },
+        }]);
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(diagnostics[0].code, "TP-E0601");
+        assert_eq!(diagnostics[0].primary, Some(span));
+    }
+
+    #[test]
+    fn mir_diagnostic_keeps_function_source_span() {
+        let source = SourceFile::new("main.tp", "fn main() {}");
+        let span = Span::new(source.id(), 0, 2);
+        let diagnostics = mir_verification_diagnostics(vec![MirVerificationError {
+            function: "main".to_owned(),
+            span,
+            kind: MirVerificationKind::InvalidEntry {
+                entry: BlockId(999),
+            },
+        }]);
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(diagnostics[0].code, "TP-E0600");
+        assert_eq!(diagnostics[0].primary, Some(span));
+    }
 }

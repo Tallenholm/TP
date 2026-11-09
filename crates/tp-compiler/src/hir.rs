@@ -37,6 +37,7 @@ pub enum HirStmt {
         symbol: SymbolId,
         name: String,
         mutable: bool,
+        ty: Type,
         value: HirExpr,
         span: Span,
     },

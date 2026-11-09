@@ -37,7 +37,7 @@ impl SemanticModel {
         self.expr_types.insert(span, ty);
     }
 
-    pub(crate) fn expr_type(&self, span: Span) -> Option<&Type> {
+    pub fn expr_type(&self, span: Span) -> Option<&Type> {
         self.expr_types.get(&span)
     }
 
@@ -53,7 +53,7 @@ impl SemanticModel {
         self.bindings.insert(span, SemanticBinding { symbol, ty });
     }
 
-    pub(crate) fn binding(&self, span: Span) -> Option<(SymbolId, &Type)> {
+    pub fn binding(&self, span: Span) -> Option<(SymbolId, &Type)> {
         self.bindings
             .get(&span)
             .map(|binding| (binding.symbol, &binding.ty))

@@ -1,13 +1,13 @@
 # TP
 
 > [!CAUTION]
-> **Gate 2 — M1 Semantic Freeze — is VERIFYING. Gate 3+ work is LOCKED.** Before changing code or design, read [`AGENTS.md`](AGENTS.md), [`docs/MASTER_GATED_DEVELOPMENT_PLAN.md`](docs/MASTER_GATED_DEVELOPMENT_PLAN.md), [`docs/gates/STATUS.md`](docs/gates/STATUS.md), and the active [Gate 2 report](docs/gates/GATE-02-M1-semantic-freeze.md). Passing CI does **not** authorize merge or advancement.
+> **Gate 3 — Compiler Architecture Foundation — is ACTIVE. Gates 0–2 PASSED; Gate 4+ LOCKED.** Before changing code or design, read [`AGENTS.md`](AGENTS.md), [`docs/MASTER_GATED_DEVELOPMENT_PLAN.md`](docs/MASTER_GATED_DEVELOPMENT_PLAN.md), [`docs/gates/STATUS.md`](docs/gates/STATUS.md), and the active [Gate 3 report](docs/gates/GATE-03-compiler-architecture-foundation.md). Passing CI does **not** authorize merging Gate 3 or opening Gate 4.
 
 TP is the codename for a proprietary experimental general-purpose programming language and toolchain designed for software built jointly by humans and AI agents.
 
 The long-term goal is to combine high-level ergonomics with strong static guarantees, predictable systems behavior, broad interoperability, explicit capabilities, and tooling that exposes enough structured information for both humans and software agents to reason about a program reliably.
 
-> **Maturity:** pre-release research and implementation. Gate 1 adversarial stabilization has passed. The M1 semantic surface has been frozen through Gate 2 feature work and a 144-case implementation-independent conformance corpus; formal Gate 2 closure still requires final exact-head verification and owner authorization. TP is not ready for production use.
+> **Maturity:** pre-release research and implementation. Gates 0, 1 and 2 have PASSED; the M1 executable core is merged into stable `main` after 144/144 implementation-independent conformance cases. Gate 3 compiler architecture remains in active development on its own draft PR. TP is **not** ready for production use.
 
 > **Proprietary software.** Copyright (c) 2026 Timothy Holm. All Rights Reserved. TP is **not open source**. See [`LICENSE`](LICENSE).
 
@@ -43,6 +43,16 @@ The foundational design is governed by ten laws:
 See the complete [universal-language design specification](docs/superpowers/specs/2026-08-12-universal-language-design.md).
 
 ---
+
+## Gate 3 compiler architecture (development branch only)
+
+The stable `main` branch contains the passed M1 executable core. Active Gate 3 work lives only on the [Gate 3 draft PR #2](https://github.com/Tallenholm/TP/pull/2); it is **not yet a released or stable `main` capability**.
+
+The Gate 3 branch introduces `HirVerifier` and `MirVerifier`, checks IR before normal execution (including direct public interpreter execution), and rejects inconsistent symbol and type metadata. `Compiler::analyze_source` and `analyze_path` expose noncached `CompilationSnapshot` views of source files, checked semantics, HIR, MIR and canonical module graphs. Module identity is a canonical path, while numeric source and local symbols are **not stable persistent cross-compilation IDs**.
+
+Evidence on the branch: **23 HIR verifier tests, 20 MIR verifier tests and six snapshot/query tests**, plus the original 144-case M1 conformance corpus, passed Rust 1.85.0 pinned CI [42506366279](https://github.com/Tallenholm/TP/actions/runs/42506366279). These are meaningful compiler correctness checks, **not** a full proof of safe execution, native performance, or completed Gate 3.
+
+See [stage contracts](docs/COMPILER_STAGE_CONTRACTS.md), [Gate 3 plan](docs/superpowers/plans/2026-11-08-gate3-compiler-architecture.md), [Gate 3 report](docs/gates/GATE-03-compiler-architecture-foundation.md), and [identity/query ADR](docs/decisions/ADR-0003-gate3-identity-and-query-scope.md).
 
 ## Current M1 architecture
 
@@ -298,7 +308,7 @@ The M1 loader resolves sibling imports relative to the importing file, canonical
 
 ## Current M1 language surface
 
-The following surface is frozen for M1 by the Gate 2 semantic documents and conformance corpus. Formal Gate 2 closure is still pending:
+The following surface was frozen for M1 by the PASSED Gate 2 semantic documents and conformance corpus:
 
 | Area | Current M1 support |
 |---|---|
@@ -488,7 +498,7 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 ```
 
-M1 reproducibility is pinned to Rust 1.85.0 and locked Cargo dependencies. Gate 1 has passed; Gate 2 is in final verification after semantic freeze, conformance, and whole-branch semantic review.
+M1 reproducibility is pinned to Rust 1.85.0 and locked Cargo dependencies. Gates 0–2 have PASSED and M1 is merged to `main`; Gate 3 implementation and evidence verification continue on its separate draft PR.
 
 ---
 
@@ -500,7 +510,10 @@ M1 reproducibility is pinned to Rust 1.85.0 and locked Cargo dependencies. Gate 
 | [`docs/MASTER_GATED_DEVELOPMENT_PLAN.md`](docs/MASTER_GATED_DEVELOPMENT_PLAN.md) | Gate 0–20 roadmap and pass criteria |
 | [`docs/gates/STATUS.md`](docs/gates/STATUS.md) | Authoritative current gate states |
 | [`docs/gates/GATE-01-M1-adversarial-stabilization.md`](docs/gates/GATE-01-M1-adversarial-stabilization.md) | Passed Gate 1 stabilization evidence ledger |
-| [`docs/gates/GATE-02-M1-semantic-freeze.md`](docs/gates/GATE-02-M1-semantic-freeze.md) | Active Gate 2 semantic-freeze report and decisions |
+| [`docs/gates/GATE-02-M1-semantic-freeze.md`](docs/gates/GATE-02-M1-semantic-freeze.md) | PASSED Gate 2 semantic-freeze report and decisions |
+| [`docs/gates/GATE-03-compiler-architecture-foundation.md`](docs/gates/GATE-03-compiler-architecture-foundation.md) | ACTIVE Gate 3 architecture verification ledger |
+| [`docs/COMPILER_STAGE_CONTRACTS.md`](docs/COMPILER_STAGE_CONTRACTS.md) | Compiler stage and IR verifier contracts |
+| [`docs/decisions/ADR-0003-gate3-identity-and-query-scope.md`](docs/decisions/ADR-0003-gate3-identity-and-query-scope.md) | Gate 3 canonical module, source/symbol lifetime and query-cache scope |
 | [`tests/conformance/`](tests/conformance/) | Implementation-independent M1 semantic oracle |
 | [`docs/decisions/`](docs/decisions/) | Architecture/governance decision records |
 | [`docs/superpowers/specs/2026-08-12-universal-language-design.md`](docs/superpowers/specs/2026-08-12-universal-language-design.md) | Foundational language design |

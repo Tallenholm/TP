@@ -107,7 +107,7 @@ impl<'a> HirLowerer<'a> {
                 span,
                 ..
             } => {
-                let (symbol, _) = self
+                let (symbol, checked_ty) = self
                     .semantic
                     .binding(*span)
                     .expect("checked binding exists");
@@ -115,6 +115,7 @@ impl<'a> HirLowerer<'a> {
                     symbol,
                     name: name.clone(),
                     mutable: *mutable,
+                    ty: checked_ty.clone(),
                     value: self.lower_expr(value),
                     span: *span,
                 }

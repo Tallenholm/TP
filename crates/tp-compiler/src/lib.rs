@@ -3,11 +3,14 @@
 mod ast;
 mod diagnostic;
 mod hir;
+mod hir_verify;
 mod interpreter;
 mod lexer;
 mod lower_hir;
 mod lower_mir;
 mod mir;
+mod mir_verify;
+mod module_graph;
 mod module_loader;
 #[allow(clippy::while_let_loop)]
 mod parser;
@@ -32,6 +35,7 @@ pub use hir::{
     HirBlock, HirExpr, HirExprKind, HirFunction, HirGlobalKind, HirMatchArm, HirModule, HirParam,
     HirPattern, HirPatternKind, HirStmt,
 };
+pub use hir_verify::{HirVerificationError, HirVerificationKind, HirVerifier};
 pub use interpreter::{Interpreter, RuntimeError};
 pub use lexer::{LexResult, Lexer};
 pub use lower_hir::HirLowerer;
@@ -40,9 +44,11 @@ pub use mir::{
     BasicBlock, BlockId, Constant, LocalId, MirFunction, MirLocal, MirModule, MirPattern,
     MirStatement, Operand, Rvalue, Terminator,
 };
+pub use mir_verify::{MirVerificationError, MirVerificationKind, MirVerifier};
+pub use module_graph::{ModuleGraph, ModuleId, ModuleImport, ModuleNode};
 pub use module_loader::{ModuleLoadReport, ModuleLoader};
 pub use parser::{ParseResult, Parser};
-pub use pipeline::{CompileReport, Compiler, RunFailure, RunReport};
+pub use pipeline::{CompilationSnapshot, CompileReport, Compiler, RunFailure, RunReport};
 pub use semantic::SemanticModel;
 pub use source::{LineCol, SourceFile, SourceId, SourceManager, Span};
 pub use symbol::{Binding, Scopes, SymbolId};
