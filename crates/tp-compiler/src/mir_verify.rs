@@ -51,6 +51,12 @@ pub enum MirVerificationKind {
         expected: Type,
         actual: Type,
     },
+    InvalidAssignmentType {
+        block: BlockId,
+        target: LocalId,
+        expected: Type,
+        actual: Type,
+    },
     UnknownFunctionReference {
         name: String,
     },
@@ -104,6 +110,16 @@ impl fmt::Display for MirVerificationKind {
                 f,
                 "block {} returns primitive {actual} but function expects {expected}",
                 block.0
+            ),
+            Self::InvalidAssignmentType {
+                block,
+                target,
+                expected,
+                actual,
+            } => write!(
+                f,
+                "block {} assigns primitive {actual} to local {} of type {expected}",
+                block.0, target.0
             ),
             Self::UnknownFunctionReference { name } => {
                 write!(f, "MIR references nonexistent callable `{name}`")
@@ -215,6 +231,34 @@ impl MirVerifier {
                 let MirStatement::Assign { target, value } = statement;
                 Self::check_local(function, block.id, *target, errors);
                 Self::check_rvalue(function, known_functions, block.id, value, errors);
+                // This deliberately covers only primitive copies. Named and
+                // generic values may require contextual typing in frozen M1.
+                // Full Rvalue typing belongs to the later Gate 3 type proof.
+                if let Rvalue::Use(operand) = value {
+                    let expected = function
+                        .locals
+                        .get(target.0 as usize)
+                        .filter(|local| local.id == *target)
+                        .map(|local| &local.ty);
+                    let actual = Self::operand_type(function, operand);
+                    if let (Some(expected), Some(actual)) = (expected, actual) {
+                        if Self::is_primitive(expected)
+                            && Self::is_primitive(&actual)
+                            && *expected != actual
+                        {
+                            Self::error(
+                                function,
+                                MirVerificationKind::InvalidAssignmentType {
+                                    block: block.id,
+                                    target: *target,
+                                    expected: expected.clone(),
+                                    actual,
+                                },
+                                errors,
+                            );
+                        }
+                    }
+                }
             }
             match &block.terminator {
                 Terminator::Unreachable | Terminator::Trap(_) | Terminator::Return(None) => {}
