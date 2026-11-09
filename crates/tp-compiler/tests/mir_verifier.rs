@@ -435,3 +435,62 @@ fn accepts_initialized_mutable_locals_through_loops() {
         .expect("valid loop must lower");
     assert!(MirVerifier::verify(&mir).is_ok());
 }
+
+#[test]
+fn rejects_wrong_primitive_constant_assigned_to_local() {
+    let mut mir = sample();
+    let function = &mut mir.functions[0];
+    let entry = function.entry;
+    function.blocks[entry.0 as usize].statements[0] = MirStatement::Assign {
+        target: LocalId(0),
+        value: Rvalue::Use(Operand::Constant(Constant::Bool(true))),
+    };
+    let errors = MirVerifier::verify(&mir).expect_err("Bool cannot initialize an i64 local");
+    assert!(
+        errors.iter().any(|error| matches!(
+            &error.kind,
+            MirVerificationKind::InvalidAssignmentType { expected, actual, .. }
+                if *expected == Type::I64 && *actual == Type::Bool
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_wrong_primitive_local_assigned_to_local() {
+    let mut mir = Compiler::new()
+        .lower_mir_source(
+            "main.tp",
+            "fn main() -> i64 { let a = true; let b = 7; b }",
+        )
+        .expect("valid source must lower");
+    let function = &mut mir.functions[0];
+    let bool_local = function
+        .locals
+        .iter()
+        .find(|local| local.ty == Type::Bool)
+        .expect("Bool local")
+        .id;
+    let int_local = function
+        .locals
+        .iter()
+        .find(|local| local.ty == Type::I64)
+        .expect("i64 local")
+        .id;
+    let entry = function.entry;
+    function.blocks[entry.0 as usize]
+        .statements
+        .push(MirStatement::Assign {
+            target: int_local,
+            value: Rvalue::Use(Operand::Local(bool_local)),
+        });
+    let errors = MirVerifier::verify(&mir).expect_err("Bool cannot assign into i64 local");
+    assert!(
+        errors.iter().any(|error| matches!(
+            &error.kind,
+            MirVerificationKind::InvalidAssignmentType { expected, actual, .. }
+                if *expected == Type::I64 && *actual == Type::Bool
+        )),
+        "{errors:#?}"
+    );
+}
