@@ -257,32 +257,30 @@ impl MirVerifier {
                 let MirStatement::Assign { target, value } = statement;
                 Self::check_local(function, block.id, *target, errors);
                 Self::check_rvalue(function, known_functions, block.id, value, errors);
-                // This deliberately covers only primitive copies. Named and
-                // generic values may require contextual typing in frozen M1.
-                // Full Rvalue typing belongs to the later Gate 3 type proof.
-                if let Rvalue::Use(operand) = value {
-                    let expected = function
-                        .locals
-                        .get(target.0 as usize)
-                        .filter(|local| local.id == *target)
-                        .map(|local| &local.ty);
-                    let actual = Self::operand_type(function, operand);
-                    if let (Some(expected), Some(actual)) = (expected, actual) {
-                        if Self::is_primitive(expected)
-                            && Self::is_primitive(&actual)
-                            && *expected != actual
-                        {
-                            Self::error(
-                                function,
-                                MirVerificationKind::InvalidAssignmentType {
-                                    block: block.id,
-                                    target: *target,
-                                    expected: expected.clone(),
-                                    actual,
-                                },
-                                errors,
-                            );
-                        }
+                // Only primitive operations with fully known operand types
+                // have context-independent results. Named/generic values
+                // still require the authoritative checked semantic context.
+                let expected = function
+                    .locals
+                    .get(target.0 as usize)
+                    .filter(|local| local.id == *target)
+                    .map(|local| &local.ty);
+                let actual = Self::primitive_rvalue_type(function, value);
+                if let (Some(expected), Some(actual)) = (expected, actual) {
+                    if Self::is_primitive(expected)
+                        && Self::is_primitive(&actual)
+                        && *expected != actual
+                    {
+                        Self::error(
+                            function,
+                            MirVerificationKind::InvalidAssignmentType {
+                                block: block.id,
+                                target: *target,
+                                expected: expected.clone(),
+                                actual,
+                            },
+                            errors,
+                        );
                     }
                 }
             }
@@ -371,6 +369,57 @@ impl MirVerifier {
                 Constant::F64(_) => Type::F64,
                 Constant::String(_) => Type::String,
             }),
+        }
+    }
+
+    fn primitive_rvalue_type(function: &MirFunction, value: &Rvalue) -> Option<Type> {
+        match value {
+            Rvalue::Use(operand) => Self::operand_type(function, operand),
+            Rvalue::Unary { op, operand } => {
+                let ty = Self::operand_type(function, operand)?;
+                match op {
+                    UnaryOp::Not if ty == Type::Bool => Some(Type::Bool),
+                    UnaryOp::Negate if matches!(ty, Type::I64 | Type::F64) => Some(ty),
+                    _ => None,
+                }
+            }
+            Rvalue::Binary { op, left, right } => {
+                let lhs = Self::operand_type(function, left)?;
+                let rhs = Self::operand_type(function, right)?;
+                match op {
+                    BinaryOp::And | BinaryOp::Or if lhs == Type::Bool && rhs == Type::Bool => {
+                        Some(Type::Bool)
+                    }
+                    BinaryOp::Add
+                    | BinaryOp::Subtract
+                    | BinaryOp::Multiply
+                    | BinaryOp::Divide
+                    | BinaryOp::Remainder
+                        if matches!(lhs, Type::I64 | Type::F64) && lhs == rhs =>
+                    {
+                        Some(lhs)
+                    }
+                    BinaryOp::Less
+                    | BinaryOp::LessEqual
+                    | BinaryOp::Greater
+                    | BinaryOp::GreaterEqual
+                        if matches!(lhs, Type::I64 | Type::F64) && lhs == rhs =>
+                    {
+                        Some(Type::Bool)
+                    }
+                    BinaryOp::Equal | BinaryOp::NotEqual
+                        if Self::is_primitive(&lhs) && lhs == rhs =>
+                    {
+                        Some(Type::Bool)
+                    }
+                    _ => None,
+                }
+            }
+            Rvalue::Function(_)
+            | Rvalue::Call { .. }
+            | Rvalue::Struct { .. }
+            | Rvalue::Field { .. }
+            | Rvalue::Enum { .. } => None,
         }
     }
 
