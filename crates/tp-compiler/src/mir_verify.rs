@@ -484,10 +484,16 @@ impl MirVerifier {
                         | BinaryOp::Subtract
                         | BinaryOp::Multiply
                         | BinaryOp::Divide
-                        | BinaryOp::Remainder => {
+                        | BinaryOp::Remainder
+                        | BinaryOp::Less
+                        | BinaryOp::LessEqual
+                        | BinaryOp::Greater
+                        | BinaryOp::GreaterEqual => {
                             matches!(left_ty, Type::I64 | Type::F64) && left_ty == right_ty
                         }
-                        _ => true,
+                        BinaryOp::Equal | BinaryOp::NotEqual => {
+                            Self::is_primitive(&left_ty) && left_ty == right_ty
+                        }
                     };
                     if !valid
                         && !matches!(left_ty, Type::Never | Type::Unknown)
