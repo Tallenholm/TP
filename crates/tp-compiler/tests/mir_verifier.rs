@@ -581,3 +581,49 @@ fn rejects_mixed_numeric_arithmetic() {
         "{errors:#?}"
     );
 }
+
+#[test]
+fn rejects_boolean_ordering() {
+    let mut mir = sample();
+    let function = &mut mir.functions[0];
+    let entry = function.entry;
+    function.blocks[entry.0 as usize].statements[0] = MirStatement::Assign {
+        target: LocalId(0),
+        value: Rvalue::Binary {
+            op: BinaryOp::Less,
+            left: Operand::Constant(Constant::Bool(true)),
+            right: Operand::Constant(Constant::Bool(false)),
+        },
+    };
+    let errors = MirVerifier::verify(&mir).expect_err("invalid primitive comparison must fail");
+    assert!(
+        errors.iter().any(|error| matches!(
+            &error.kind,
+            MirVerificationKind::InvalidBinaryOperandType { .. }
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_mixed_primitive_equality() {
+    let mut mir = sample();
+    let function = &mut mir.functions[0];
+    let entry = function.entry;
+    function.blocks[entry.0 as usize].statements[0] = MirStatement::Assign {
+        target: LocalId(0),
+        value: Rvalue::Binary {
+            op: BinaryOp::Equal,
+            left: Operand::Constant(Constant::I64(1)),
+            right: Operand::Constant(Constant::Bool(true)),
+        },
+    };
+    let errors = MirVerifier::verify(&mir).expect_err("invalid primitive comparison must fail");
+    assert!(
+        errors.iter().any(|error| matches!(
+            &error.kind,
+            MirVerificationKind::InvalidBinaryOperandType { .. }
+        )),
+        "{errors:#?}"
+    );
+}
