@@ -21,9 +21,9 @@
 | G3-R06 | Compiler query API contracts | IN PROGRESS | Noncached `CompilationSnapshot` exposes SourceManager, AST, checked semantic model, verified HIR/MIR, optional canonical ModuleGraph; six query tests green CI 42505002345. Incremental caching/invalidation deliberately deferred in ADR-0003. |
 | G3-R07 | Typed structured internal and user diagnostics | IN PROGRESS | Typed HIR/MIR error enums and stable `TP-E0601` / `TP-E0600` outward codes. Internal source-span-to-primary-diagnostic mapping and complete machine-structured provenance remain open. |
 | G3-R08 | HIR verifier | IN PROGRESS | Scoped symbols, checked expression/block/function/parameter/global/pattern/local metadata and source UTF-8 provenance verified. 23/23 dedicated tests passed pinned Rust 1.85 CI 42506018205 and 42506366279; deeper type/flow completeness pending. |
-| G3-R09 | MIR verifier and guarded execution | IN PROGRESS | MIR index/CFG/local/parameter/callable structural checks and primitive branch/return type checks; public `Interpreter::run_main` validates MIR. 26/26 dedicated MIR tests passed CI 42582121633, including primitive copy assignment typing and definite-assignment join, uninitialized return, match-arm bindings and loops; eight additional mutation/property-style tests passed. Full type/flow proof pending. |
-| G3-R10 | Negative/adversarial malformed-IR corpus | IN PROGRESS | 23 HIR + 26 MIR verifier tests, eight deterministic mutation/stress tests, and six query tests pass CI 42582121633, alongside frozen 144-case M1 oracle. More graph/property/fuzz/IR-dominance tests required. |
-| G3-R11 | Full regression / conformance / CI / final architecture review | IN PROGRESS | Exact-head pinned/locked Rust CI 42582121633 PASS (fmt, Clippy, workspace, 144 M1 conformance, Hello/Fibonacci). Final review, fuzz/property budget and Gate 3 approval still pending. |
+| G3-R09 | MIR verifier and guarded execution | IN PROGRESS | MIR index/CFG/local/parameter/callable structural checks and primitive branch/return type checks; public `Interpreter::run_main` validates MIR. 30/30 dedicated MIR tests passed CI 42582685206, including primitive copy assignment typing and definite-assignment join, uninitialized return, match-arm bindings and loops; eight additional mutation/property-style tests passed. Full type/flow proof pending. |
+| G3-R10 | Negative/adversarial malformed-IR corpus | IN PROGRESS | 23 HIR + 30 MIR verifier tests, eight deterministic mutation/stress tests, and six query tests pass CI 42582121633, alongside frozen 144-case M1 oracle. More graph/property/fuzz/IR-dominance tests required. |
+| G3-R11 | Full regression / conformance / CI / final architecture review | IN PROGRESS | Exact-head pinned/locked Rust CI 42582685206 PASS (fmt, Clippy, workspace, 144 M1 conformance, Hello/Fibonacci). Final review, fuzz/property budget and Gate 3 approval still pending. |
 
 ## 2. Test-Driven Evidence
 
@@ -168,3 +168,10 @@ Gate 2's frozen `docs/M1_KNOWN_LIMITATIONS.md` remains authoritative. Initial MI
 **Next gate authorized to open:** NO  
 **Owner:** Timothy Holm  
 **Approval record:** On 2026-11-08, the owner conditionally authorized Gate 2 PASS and Gate 3 ACTIVE after final checks. This is **not** approval for Gate 3 PASS or Gate 4 ACTIVE.
+
+### G3-T02 primitive MIR operator typing (2026-11-09)
+
+- **RED:** [CI 42582554178](https://github.com/Tallenholm/TP/actions/runs/42582554178) on `6a9387c0de7299740670e779553cbb2687de6bbd` passed Rust formatting and failed compilation with E0599 because the four new tests referenced missing `InvalidUnaryOperandType` and `InvalidBinaryOperandType` variants. Earlier runs 42582466343 and 42582499080 stopped at formatting and are not claimed as functional RED.
+- **Implementation:** `mir_verify.rs` now checks primitive unary `Negate` (i64/f64), `Not` (Bool), binary logical `And`/`Or` (Bool/Bool), and numeric arithmetic `Add`/`Subtract`/`Multiply`/`Divide`/`Remainder` (matching i64/i64 or f64/f64). The verifier emits typed, deterministic errors rather than attempting type inference for unknown/named/generic values.
+- **GREEN:** [CI 42582685206](https://github.com/Tallenholm/TP/actions/runs/42582685206) on `301d3151bf1b783eaaa5487b551abbeba3dead7f` passed Rust 1.85.0 formatting, strict Clippy, locked workspace tests, **30/30** MIR verifier tests, frozen 144-case M1 conformance, and Hello/Fibonacci smoke.
+- **Boundary:** This is not a full MIR expression type proof; comparison/equality result types, callable signatures, named/generic contextual typing, HIR provenance and property/fuzz work remain in scope. Gate 3 remains ACTIVE and the draft PR is not authorized to merge.
