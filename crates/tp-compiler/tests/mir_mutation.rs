@@ -19,10 +19,9 @@ fn corrupted_block_ids_are_rejected_without_panics() {
         mir.functions[0].blocks[0].id = BlockId(bad);
         let errors = MirVerifier::verify(&mir).expect_err("bad block index must fail");
         assert!(
-            errors.iter().any(|error| matches!(
-                error.kind,
-                MirVerificationKind::BlockIndexMismatch { .. }
-            )),
+            errors
+                .iter()
+                .any(|error| matches!(error.kind, MirVerificationKind::BlockIndexMismatch { .. })),
             "block ID {bad}: {errors:#?}"
         );
         let mut interpreter = Interpreter::new(&mir);
@@ -42,10 +41,9 @@ fn corrupted_local_ids_are_rejected_without_panics() {
         mir.functions[0].locals[0].id = LocalId(bad);
         let errors = MirVerifier::verify(&mir).expect_err("bad local index must fail");
         assert!(
-            errors.iter().any(|error| matches!(
-                error.kind,
-                MirVerificationKind::LocalIndexMismatch { .. }
-            )),
+            errors
+                .iter()
+                .any(|error| matches!(error.kind, MirVerificationKind::LocalIndexMismatch { .. })),
             "local ID {bad}: {errors:#?}"
         );
         let mut interpreter = Interpreter::new(&mir);
@@ -64,10 +62,9 @@ fn dangling_cfg_edges_are_rejected_without_panics() {
         mir.functions[0].blocks[0].terminator = Terminator::Goto(BlockId(bad));
         let errors = MirVerifier::verify(&mir).expect_err("dangling edge must fail");
         assert!(
-            errors.iter().any(|error| matches!(
-                error.kind,
-                MirVerificationKind::InvalidSuccessor { .. }
-            )),
+            errors
+                .iter()
+                .any(|error| matches!(error.kind, MirVerificationKind::InvalidSuccessor { .. })),
             "successor {bad}: {errors:#?}"
         );
     }
@@ -78,10 +75,12 @@ fn dangling_operand_locals_are_rejected_without_panics() {
     let baseline = fixture();
     for bad in [1, 2, 3, 7, 31, 127, 255, 65_535, u32::MAX] {
         let mut mir = baseline.clone();
-        mir.functions[0].blocks[0].statements.push(MirStatement::Assign {
-            target: LocalId(0),
-            value: Rvalue::Use(Operand::Local(LocalId(bad))),
-        });
+        mir.functions[0].blocks[0]
+            .statements
+            .push(MirStatement::Assign {
+                target: LocalId(0),
+                value: Rvalue::Use(Operand::Local(LocalId(bad))),
+            });
         let errors = MirVerifier::verify(&mir).expect_err("dangling operand must fail");
         assert!(
             errors.iter().any(|error| matches!(
