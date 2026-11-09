@@ -1,6 +1,6 @@
 use tp_compiler::{
-    BlockId, Compiler, Constant, Interpreter, LocalId, MirModule, MirPattern, MirStatement,
-    MirVerificationKind, MirVerifier, Operand, Rvalue, Terminator, Type,
+    BinaryOp, BlockId, Compiler, Constant, Interpreter, LocalId, MirModule, MirPattern, MirStatement,
+    MirVerificationKind, MirVerifier, Operand, Rvalue, Terminator, Type, UnaryOp,
 };
 
 fn sample() -> MirModule {
@@ -487,6 +487,82 @@ fn rejects_wrong_primitive_local_assigned_to_local() {
             &error.kind,
             MirVerificationKind::InvalidAssignmentType { expected, actual, .. }
                 if *expected == Type::I64 && *actual == Type::Bool
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_boolean_not_applied_to_integer() {
+    let mut mir = sample();
+    let function = &mut mir.functions[0];
+    let entry = function.entry;
+    function.blocks[entry.0 as usize].statements[0] = MirStatement::Assign {
+        target: LocalId(0),
+        value: Rvalue::Unary { op: UnaryOp::Not, operand: Operand::Constant(Constant::I64(7)) },
+    };
+    let errors = MirVerifier::verify(&mir).expect_err("malformed primitive operation must fail");
+    assert!(
+        errors.iter().any(|error| matches!(
+            &error.kind,
+            MirVerificationKind::InvalidUnaryOperandType { actual, .. } if *actual == Type::I64
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_numeric_negation_of_boolean() {
+    let mut mir = sample();
+    let function = &mut mir.functions[0];
+    let entry = function.entry;
+    function.blocks[entry.0 as usize].statements[0] = MirStatement::Assign {
+        target: LocalId(0),
+        value: Rvalue::Unary { op: UnaryOp::Negate, operand: Operand::Constant(Constant::Bool(true)) },
+    };
+    let errors = MirVerifier::verify(&mir).expect_err("malformed primitive operation must fail");
+    assert!(
+        errors.iter().any(|error| matches!(
+            &error.kind,
+            MirVerificationKind::InvalidUnaryOperandType { actual, .. } if *actual == Type::Bool
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_boolean_and_of_integers() {
+    let mut mir = sample();
+    let function = &mut mir.functions[0];
+    let entry = function.entry;
+    function.blocks[entry.0 as usize].statements[0] = MirStatement::Assign {
+        target: LocalId(0),
+        value: Rvalue::Binary { op: BinaryOp::And, left: Operand::Constant(Constant::I64(1)), right: Operand::Constant(Constant::I64(2)) },
+    };
+    let errors = MirVerifier::verify(&mir).expect_err("malformed primitive operation must fail");
+    assert!(
+        errors.iter().any(|error| matches!(
+            &error.kind,
+            MirVerificationKind::InvalidBinaryOperandType { .. }
+        )),
+        "{errors:#?}"
+    );
+}
+
+#[test]
+fn rejects_mixed_numeric_arithmetic() {
+    let mut mir = sample();
+    let function = &mut mir.functions[0];
+    let entry = function.entry;
+    function.blocks[entry.0 as usize].statements[0] = MirStatement::Assign {
+        target: LocalId(0),
+        value: Rvalue::Binary { op: BinaryOp::Add, left: Operand::Constant(Constant::I64(1)), right: Operand::Constant(Constant::Bool(true)) },
+    };
+    let errors = MirVerifier::verify(&mir).expect_err("malformed primitive operation must fail");
+    assert!(
+        errors.iter().any(|error| matches!(
+            &error.kind,
+            MirVerificationKind::InvalidBinaryOperandType { .. }
         )),
         "{errors:#?}"
     );
