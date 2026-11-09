@@ -21,9 +21,9 @@
 | G3-R06 | Compiler query API contracts | IN PROGRESS | Noncached `CompilationSnapshot` exposes SourceManager, AST, checked semantic model, verified HIR/MIR, optional canonical ModuleGraph; six query tests green CI 42505002345. Incremental caching/invalidation deliberately deferred in ADR-0003. |
 | G3-R07 | Typed structured internal and user diagnostics | IN PROGRESS | Typed HIR/MIR error enums and stable `TP-E0601` / `TP-E0600` outward codes. Internal source-span-to-primary-diagnostic mapping and complete machine-structured provenance remain open. |
 | G3-R08 | HIR verifier | IN PROGRESS | Scoped symbols, checked expression/block/function/parameter/global/pattern/local metadata and source UTF-8 provenance verified. 23/23 dedicated tests passed pinned Rust 1.85 CI 42506018205 and 42506366279; deeper type/flow completeness pending. |
-| G3-R09 | MIR verifier and guarded execution | IN PROGRESS | MIR index/CFG/local/parameter/callable structural checks and primitive branch/return type checks; public `Interpreter::run_main` validates MIR. 20/20 dedicated tests passed CI 42506366279. Full definite-assignment/type proof pending. |
-| G3-R10 | Negative/adversarial malformed-IR corpus | IN PROGRESS | 23 HIR + 20 MIR malformed/positive verifier tests and six query tests pass CI 42506366279, alongside frozen 144-case M1 oracle. More graph/property/fuzz/IR-dominance tests required. |
-| G3-R11 | Full regression / conformance / CI / final architecture review | IN PROGRESS | Exact-head pinned/locked Rust CI 42506366279 PASS (fmt, Clippy, workspace, 144 M1 conformance, Hello/Fibonacci). Final review, fuzz/property budget and Gate 3 approval still pending. |
+| G3-R09 | MIR verifier and guarded execution | IN PROGRESS | MIR index/CFG/local/parameter/callable structural checks and primitive branch/return type checks; public `Interpreter::run_main` validates MIR. 24/24 dedicated MIR tests passed CI 42581727725, including definite-assignment join, uninitialized return, match-arm bindings and loops. Full type/flow proof pending. |
+| G3-R10 | Negative/adversarial malformed-IR corpus | IN PROGRESS | 23 HIR + 24 MIR verifier tests and six query tests pass CI 42581727725, alongside frozen 144-case M1 oracle. More graph/property/fuzz/IR-dominance tests required. |
+| G3-R11 | Full regression / conformance / CI / final architecture review | IN PROGRESS | Exact-head pinned/locked Rust CI 42581727725 PASS (fmt, Clippy, workspace, 144 M1 conformance, Hello/Fibonacci). Final review, fuzz/property budget and Gate 3 approval still pending. |
 
 ## 2. Test-Driven Evidence
 
@@ -58,6 +58,14 @@
 | Function/parameter/pattern/local symbol semantic provenance | [42505895761](https://github.com/Tallenholm/TP/actions/runs/42505895761) — no signature/pattern/local variants (fmt PASS) | [42506018205](https://github.com/Tallenholm/TP/actions/runs/42506018205) — 23 HIR tests, frozen M1 all green |
 | MIR duplicate callables, unknown functions, primitive branches and returns | [42506212013](https://github.com/Tallenholm/TP/actions/runs/42506212013) — absent MIR error variants (fmt PASS) | [42506366279](https://github.com/Tallenholm/TP/actions/runs/42506366279) — 20 MIR + 23 HIR + six query tests, full frozen M1 suite/format/Clippy/smokes PASS |
 
+**G3-T02 MIR definite-assignment control-flow analysis (2026-11-09):**
+
+- Added a forward must-analysis using predecessor intersection and fixed-point iteration over reachable MIR blocks, treating function parameters as initially assigned, statement targets as assigned only after RHS evaluation, and match-pattern locals as assigned only on matching arm edges.
+- Tests include reading an uninitialized return local, a missing assignment on one branch of a join, valid match-arm bindings, and mutable locals initialized before a loop.
+- Formatting-only CI failures 42507203791, 42507251354 and 42507409257 are not counted as RED functional evidence. Commit `48ef6ebef71f78dfcf59674fbd94f1dd5a0f4d58` fixes the formatting.
+- [CI 42581727725](https://github.com/Tallenholm/TP/actions/runs/42581727725) PASS on exact implementation head `48ef6ebef71f78dfcf59674fbd94f1dd5a0f4d58`: 24/24 MIR verifier tests, 23 HIR tests, six query tests, 144-case frozen M1 corpus, Rust 1.85.0 format/Clippy/workspace and Hello/Fibonacci smoke. This is GREEN regression evidence, **not** a claimed documented functional RED for the new dataflow behavior.
+- Remaining risks: type consistency beyond primitive checks, duplicate-edge/cycle/property testing, and whole-branch audit. Gate 3 remains ACTIVE.
+
 The intermediate formatting-only failures do **not** count as successful RED demonstrations. Final whole-branch security/architecture review is not complete.
 
 ## 3. Verification Commands
@@ -68,7 +76,9 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 ```
 
-These are required for each completed code increment and at exit. Gate 3 work will also run verifier-negative cases, the full 144-case M1 conformance corpus, and Hello/Fibonacci smoke tests. Initial Gate 3 T02 verification PASS on exact head `5ff892d963a0b602e8f88d86ff3b45e132c577b3` via CI 42499191663, including 7/7 verifier tests and full frozen M1 regression. Current independently verified implementation head `7f5c654ccb50457af26b7d2958facf943f1d5461` passed exact-head CI **42506366279**: 20/20 MIR, 23/23 HIR, six query tests, all frozen 144 M1 conformance cases, workspace, formatter, Clippy and Hello/Fibonacci. This evidence-closure commit must also pass fresh CI before a completion claim. Final Gate 3 exit verification has **not** been claimed. Final full Gate 3 exit verification is not yet claimed.
+These are required for each completed code increment and at exit. Gate 3 work will also run verifier-negative cases, the full 144-case M1 conformance corpus, and Hello/Fibonacci smoke tests. Initial Gate 3 T02 verification PASS on exact head `5ff892d963a0b602e8f88d86ff3b45e132c577b3` via CI 42499191663, including 7/7 verifier tests and full frozen M1 regression. Current independently verified implementation head `48ef6ebef71f78dfcf59674fbd94f1dd5a0f4d58` passed exact-head CI **42581727725**: 24/24 MIR, 23/23 HIR, six query tests, all frozen 144 M1 conformance cases, workspace, formatter, Clippy and Hello/Fibonacci. This evidence-closure commit must also pass fresh CI before a completion claim. Final Gate 3 exit verification has **not** been claimed. Final full Gate 3 exit verification is not yet claimed.
+
+- [Definite-assignment GREEN CI 42581727725](https://github.com/Tallenholm/TP/actions/runs/42581727725) on `48ef6eb`: 24/24 MIR, 23/23 HIR, six queries, M1 conformance, fmt/Clippy/workspace/smokes PASS.
 
 ## 4. CI Evidence
 
