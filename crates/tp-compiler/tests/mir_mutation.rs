@@ -134,7 +134,10 @@ fn generated_linear_cfg_with_sixty_four_blocks_remains_valid() {
     assert_eq!(MirVerifier::verify(&mir), Ok(()));
     let mut interpreter = Interpreter::new(&mir);
     assert_eq!(
-        interpreter.run_main().expect("valid generated CFG").as_i64(),
+        interpreter
+            .run_main()
+            .expect("valid generated CFG")
+            .as_i64(),
         Some(7)
     );
 }
