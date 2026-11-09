@@ -459,10 +459,7 @@ fn rejects_wrong_primitive_constant_assigned_to_local() {
 #[test]
 fn rejects_wrong_primitive_local_assigned_to_local() {
     let mut mir = Compiler::new()
-        .lower_mir_source(
-            "main.tp",
-            "fn main() -> i64 { let a = true; let b = 7; b }",
-        )
+        .lower_mir_source("main.tp", "fn main() -> i64 { let a = true; let b = 7; b }")
         .expect("valid source must lower");
     let function = &mut mir.functions[0];
     let bool_local = function
