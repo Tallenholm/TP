@@ -1,8 +1,8 @@
 //! Deterministic adversarial mutations of otherwise-valid MIR.
 //! The fixed input corpus avoids flaky randomness and external dependencies.
 use tp_compiler::{
-    BlockId, Compiler, Interpreter, LocalId, MirStatement, MirVerificationKind, MirVerifier,
-    Operand, Rvalue, Terminator,
+    BasicBlock, BlockId, Compiler, Interpreter, LocalId, MirStatement, MirVerificationKind,
+    MirVerifier, Operand, Rvalue, Terminator,
 };
 
 fn fixture() -> tp_compiler::MirModule {
@@ -112,4 +112,60 @@ fn malformed_mir_diagnostics_are_deterministic_and_side_effect_free() {
         assert_eq!(MirVerifier::verify(&mir), Err(first.clone()));
     }
     assert_eq!(mir, unchanged);
+}
+
+#[test]
+fn generated_linear_cfg_with_sixty_four_blocks_remains_valid() {
+    let mut mir = fixture();
+    let function = &mut mir.functions[0];
+    assert_eq!(function.blocks.len(), 1, "fixture should have one block");
+    function.blocks[0].terminator = Terminator::Goto(BlockId(1));
+    for index in 1..64 {
+        function.blocks.push(BasicBlock {
+            id: BlockId(index),
+            statements: Vec::new(),
+            terminator: if index == 63 {
+                Terminator::Return(Some(Operand::Local(LocalId(0))))
+            } else {
+                Terminator::Goto(BlockId(index + 1))
+            },
+        });
+    }
+    assert_eq!(MirVerifier::verify(&mir), Ok(()));
+    let mut interpreter = Interpreter::new(&mir);
+    assert_eq!(
+        interpreter.run_main().expect("valid generated CFG").as_i64(),
+        Some(7)
+    );
+}
+
+#[test]
+fn generated_linear_cfg_rejects_one_corrupted_middle_edge() {
+    let mut mir = fixture();
+    let function = &mut mir.functions[0];
+    assert_eq!(function.blocks.len(), 1, "fixture should have one block");
+    function.blocks[0].terminator = Terminator::Goto(BlockId(1));
+    for index in 1..64 {
+        function.blocks.push(BasicBlock {
+            id: BlockId(index),
+            statements: Vec::new(),
+            terminator: if index == 63 {
+                Terminator::Return(Some(Operand::Local(LocalId(0))))
+            } else {
+                Terminator::Goto(BlockId(index + 1))
+            },
+        });
+    }
+    mir.functions[0].blocks[32].terminator = Terminator::Goto(BlockId(u32::MAX));
+    let errors = MirVerifier::verify(&mir).expect_err("broken generated CFG must fail");
+    assert!(
+        errors.iter().any(|error| matches!(
+            error.kind,
+            MirVerificationKind::InvalidSuccessor {
+                from: BlockId(32),
+                target: BlockId(u32::MAX)
+            }
+        )),
+        "{errors:#?}"
+    );
 }
