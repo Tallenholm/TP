@@ -1,8 +1,8 @@
 use std::{collections::HashSet, fmt};
 
 use crate::{
-    BinaryOp, BlockId, Constant, LocalId, MirFunction, MirModule, MirPattern, MirStatement, Operand,
-    Rvalue, Span, Terminator, Type, UnaryOp,
+    BinaryOp, BlockId, Constant, LocalId, MirFunction, MirModule, MirPattern, MirStatement,
+    Operand, Rvalue, Span, Terminator, Type, UnaryOp,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
